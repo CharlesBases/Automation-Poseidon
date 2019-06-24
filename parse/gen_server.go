@@ -22,13 +22,13 @@ import (
 	{{range $index, $importA := .ImportA}}{{generateImport $index $importA}}
 	{{end}}
 
-	proto "github.com/CharlesBases/common/proto/parse"
+	proto "github.com/CharlesBases/proto/parse"
 
 	log "github.com/cihub/seelog"
 	_struct "github.com/golang/protobuf/ptypes/struct"
 )
 {{range $interfaceIndex, $interface := .Interfaces}}
-func New{{.Name}}Server_({{.Name}} {{$Package}}.{{.Name}}) {{.Name}}Server {
+func New{{.Name}}Server_({{.Name}} {{$Package}}.{{.Name}}) {{.Name}}Handler {
 	return &{{.Name}}ServerImpl{
 		{{.Name}}:{{.Name}},
 	}

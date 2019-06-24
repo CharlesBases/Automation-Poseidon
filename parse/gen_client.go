@@ -15,14 +15,15 @@ import (
 	{{range $importIndex, $import := .ImportA}}{{generateImport $importIndex $import}}
 	{{end}}
 
-	proto "github.com/CharlesBases/common/proto/parse"
+	proto "github.com/CharlesBases/proto/parse"
 
 	log "github.com/cihub/seelog"
 	_struct "github.com/golang/protobuf/ptypes/struct"
+	"github.com/micro/go-micro/client"
 	"google.golang.org/grpc"
 )
 {{range $interfaceIndex, $interface := .Interfaces}}
-func New{{.Name}}Client_({{.Name}} {{.Name}}Client, opts ...grpc.CallOption) {{$pkg}}.{{.Name}} {
+func New{{.Name}}Client_({{.Name}} {{.Name}}Client, opts ...client.CallOption) {{$pkg}}.{{.Name}} {
 	return &{{.Name}}ClientImpl{
 		{{.Name}}:  {{.Name}},
 		opts:       opts,
@@ -31,7 +32,7 @@ func New{{.Name}}Client_({{.Name}} {{.Name}}Client, opts ...grpc.CallOption) {{$
 
 type {{.Name}}ClientImpl struct {
 	{{.Name}}   {{.Name}}Client
-	opts        []grpc.CallOption
+	opts        []client.CallOption
 }
 {{range $funcsIndex, $func := .Funcs}} {{$ParamsLen := .Params | len | funcReduce}} {{$ResultsLen := .Results | len | funcReduce}}
 func ({{$interface.Name}} *{{$interface.Name}}ClientImpl) {{.Name}}(ctx context.Context, {{range $paramsIndex, $param := .Params}}{{.Name}} {{.GoType}} {{if ne $paramsIndex  $ParamsLen }},{{end}} {{end}}) ({{range $resultsIndex, $result := .Results}} {{.Name}} {{.GoType}}{{if ne $resultsIndex $ResultsLen }},{{end}} {{end}}) {

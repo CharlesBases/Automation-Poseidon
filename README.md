@@ -1,7 +1,19 @@
 ## 说明
 	根据接口自动生成rpc文件
+###### 备注
+* C/S代码基于micro_out生成
+* 使用 protoc-gen-gogofaster 插件生成pb.go文件
+```
+protoc-gen-gofast   (5-7 times faster than gogo)
+protoc-gen-gogofast (same as gofast, but imports gogoprotobuf)
+protoc-gen-gogofaster   (same as gogofast, without XXX_unrecognized, less pointer fields)
+protoc-gen-gogoslick    (same as gogofaster, but with generated string, gostring and equal methods)
+```
+
 ## 安装
 * go get github.com/gogo/protobuf/proto
+* go get github.com/micro/micro
+* go get github.com/micro/protoc-gen-micro
 * go install github.com/CharlesBases/proto
 * brew install protobuf
 
