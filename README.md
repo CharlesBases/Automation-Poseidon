@@ -1,11 +1,21 @@
 ## 说明
 	根据接口自动生成rpc文件
 ## 安装
-* go get github.com/golang/protobuf/{proto,protoc-gen-go}
+* go get github.com/gogo/protobuf/proto
 * go install github.com/CharlesBases/proto
 * brew install protobuf
 
 ## 用法
+```
+proto --help
+Usage of proto:
+  -file string
+        full path of the file
+  -package string
+        package name in .proto file (default "auto")
+  -path string
+        full path of the generate folder (default "./pb/")
+```
 * proto -file="./bll.go" -package=auto
 * //go:generate proto -file=$GOFILE -package=auto
 
