@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	goFile       = flag.String("file", "/Users/sun/go/SourceCode/src/github.com/CharlesBases/proto/A/bll.go", "full path of the file")
+	goFile       = flag.String("file", "", "full path of the file")
 	generatePath = flag.String("path", "./pb/", "full path of the generate folder")
 	protoPackage = flag.String("package", "auto", "package name in .proto file")
 )
