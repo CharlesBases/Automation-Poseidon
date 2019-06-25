@@ -22,12 +22,16 @@ var (
 	goFile       = flag.String("file", "", "full path of the file")
 	generatePath = flag.String("path", "./pb/", "full path of the generate folder")
 	protoPackage = flag.String("package", "", "package name in .proto file")
+	isCS         = flag.Bool("cs", true, "whether to generate C/S code")
 )
 
 var (
 	serFile = "server.go"
 	cliFile = "client.go"
 	proFile = "proto"
+
+	microServerFile = "micro/server.go"
+	microClientFile = "micro/client.go"
 )
 
 func init() {
@@ -62,6 +66,9 @@ func main() {
 	cliFile = path.Join(*generatePath, fmt.Sprintf("%s.%s", *protoPackage, cliFile))
 	proFile = path.Join(*generatePath, fmt.Sprintf("%s.%s", *protoPackage, proFile))
 
+	microServerFile = path.Join(*generatePath, fmt.Sprintf("%s", microServerFile))
+	microClientFile = path.Join(*generatePath, fmt.Sprintf("%s", microClientFile))
+
 	os.MkdirAll(*generatePath, 0755)
 
 	log.Info("parsing files for go: ", *goFile)
@@ -71,19 +78,21 @@ func main() {
 		log.Error(err)
 		return
 	}
-	gofile := parse.NewFile(*protoPackage, func() string {
+	gofile := parse.NewFile(func() (string, string, string) {
+		slice := make([]string, 3)
+		slice[0] = *protoPackage
+		genPath, _ := filepath.Abs(*generatePath)
+		pkgPath := filepath.Dir(*goFile)
 		list := filepath.SplitList(os.Getenv("GOPATH"))
-		packagePath := filepath.Dir(*goFile)
-		absPath, _ := filepath.Abs(".")
-		for i := range list {
-			if strings.Contains(packagePath, list[i]) {
-				return packagePath[len(list[i])+5:]
+		for _, val := range list {
+			if strings.Contains(pkgPath, fmt.Sprintf("%s%s", val, "/src/")) {
+				slice[1] = pkgPath[len(val)+5:]
 			}
-			if strings.Contains(absPath, list[i]) {
-				return absPath[len(list[i])+5:]
+			if strings.Contains(genPath, fmt.Sprintf("%s%s", val, "/src/")) {
+				slice[2] = genPath[len(val)+5:]
 			}
 		}
-		return ""
+		return slice[0], slice[1], slice[2]
 	}())
 	gofile.ParseFile(astFile)
 	if len(gofile.Interfaces) == 0 {
@@ -111,6 +120,11 @@ func main() {
 
 	gofile.GoTypeConfig()
 
+	if !*isCS {
+		log.Info("complete!")
+		return
+	}
+
 	// generate server file
 	serfile, err := createFile(serFile)
 	if err != nil {
@@ -121,9 +135,9 @@ func main() {
 	bufferSer := bytes.NewBuffer([]byte{})
 	gofile.GenServer(bufferSer)
 	serfile.Write(bufferSer.Bytes())
-	byteSlice, e1 := imports.Process("", bufferSer.Bytes(), nil)
-	if e1 != nil {
-		log.Error(e1)
+	byteSlice, serErr := imports.Process("", bufferSer.Bytes(), nil)
+	if serErr != nil {
+		log.Error(serErr)
 		return
 	}
 	serfile.Truncate(0)
@@ -140,14 +154,54 @@ func main() {
 	bufferCli := bytes.NewBuffer([]byte{})
 	gofile.GenClient(bufferCli)
 	clifile.Write(bufferCli.Bytes())
-	byteSlice, e := imports.Process("", bufferCli.Bytes(), nil)
-	if e != nil {
-		log.Error(e)
+	byteSlice, cliErr := imports.Process("", bufferCli.Bytes(), nil)
+	if cliErr != nil {
+		log.Error(cliErr)
 		return
 	}
 	clifile.Truncate(0)
 	clifile.Seek(0, 0)
 	clifile.Write(byteSlice)
+
+	os.MkdirAll(fmt.Sprintf("%s%s", *generatePath, "/micro"), 0755)
+
+	// generate micro server
+	microServer, err := createFile(microServerFile)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	defer microServer.Close()
+	bufferMicroServer := bytes.NewBuffer([]byte{})
+	gofile.GenMicroServer(bufferMicroServer)
+	microServer.Write(bufferMicroServer.Bytes())
+	byteSlice, microServerErr := imports.Process("", bufferMicroServer.Bytes(), nil)
+	if microServerErr != nil {
+		log.Error(microServerErr)
+		return
+	}
+	microServer.Truncate(0)
+	microServer.Seek(0, 0)
+	microServer.Write(byteSlice)
+
+	// generate micro client
+	microClient, err := createFile(microClientFile)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	defer microClient.Close()
+	bufferMicroClient := bytes.NewBuffer([]byte{})
+	gofile.GenMicroClient(bufferMicroClient)
+	microClient.Write(bufferMicroClient.Bytes())
+	byteSlice, microClientErr := imports.Process("", bufferMicroClient.Bytes(), nil)
+	if microClientErr != nil {
+		log.Error(microClientErr)
+		return
+	}
+	microClient.Truncate(0)
+	microClient.Seek(0, 0)
+	microClient.Write(byteSlice)
 
 	log.Info("complete!")
 }

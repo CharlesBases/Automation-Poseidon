@@ -13,6 +13,7 @@ type File struct {
 	Name          string
 	Package       string
 	PkgPath       string
+	GenPath       string
 	Structs       []Struct
 	Interfaces    []Interface
 	ImportA       map[string]string
@@ -21,10 +22,11 @@ type File struct {
 	StructMessage map[string][]Message
 }
 
-func NewFile(pkgname string, pkgpath string) File {
+func NewFile(pkgname string, pkgpath string, genPath string) File {
 	return File{
 		Package: pkgname,
 		PkgPath: pkgpath,
+		GenPath: genPath,
 	}
 }
 

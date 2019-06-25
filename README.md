@@ -11,7 +11,7 @@ protoc-gen-gogoslick    (same as gogofaster, but with generated string, gostring
 ```
 
 ## 安装
-* go get github.com/golang/protobuf
+* go get github.com/golang/protobuf/{proto,protoc-gen-go}
 * go get github.com/gogo/protobuf/proto
 * go get github.com/micro/micro
 * go get github.com/micro/protoc-gen-micro

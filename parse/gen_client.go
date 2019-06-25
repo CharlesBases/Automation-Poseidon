@@ -23,7 +23,7 @@ import (
 	"google.golang.org/grpc"
 )
 {{range $interfaceIndex, $interface := .Interfaces}}
-func New{{.Name}}Client_({{.Name}} {{.Name}}Client, opts ...client.CallOption) {{$pkg}}.{{.Name}} {
+func New{{.Name}}Client_({{.Name}} {{.Name}}, opts ...client.CallOption) {{$pkg}}.{{.Name}} {
 	return &{{.Name}}ClientImpl{
 		{{.Name}}:  {{.Name}},
 		opts:       opts,
@@ -31,7 +31,7 @@ func New{{.Name}}Client_({{.Name}} {{.Name}}Client, opts ...client.CallOption) {
 }
 
 type {{.Name}}ClientImpl struct {
-	{{.Name}}   {{.Name}}Client
+	{{.Name}}   {{.Name}}
 	opts        []client.CallOption
 }
 {{range $funcsIndex, $func := .Funcs}} {{$ParamsLen := .Params | len | funcReduce}} {{$ResultsLen := .Results | len | funcReduce}}
