@@ -15,7 +15,6 @@ package {{.Package}}
 
 import (
 	"fmt"
-	"runtime"
 	"runtime/debug"
 
 	"{{.PkgPath}}"

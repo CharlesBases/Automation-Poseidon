@@ -10,6 +10,8 @@ import (
 const ServiceMicroServer = `package main {{$PackagePB := .Package}}
 
 import (
+	"time"
+
 	log "github.com/cihub/seelog"
 	"github.com/micro/go-grpc"
 	"github.com/micro/go-micro"

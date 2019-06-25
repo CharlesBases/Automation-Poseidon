@@ -17,7 +17,7 @@ import (
 	"github.com/micro/go-micro/client/selector"
 	"github.com/micro/go-micro/registry"
 	wrapper "github.com/micro/go-plugins/wrapper/trace/opentracing"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 
 	"{{.PkgPath}}"
 	{{$PackagePB}} "{{.GenPath}}"

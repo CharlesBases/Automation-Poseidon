@@ -12,6 +12,7 @@ import (
 const ServiceClientTemplate = `// this file is generated from {{.PkgPath}} {{$pkg := .PkgPath | packageSort}} {{$Package := .Package}}
 package {{.Package}}
 import (
+	"fmt"
 	{{range $importIndex, $import := .ImportA}}{{generateImport $importIndex $import}}
 	{{end}}
 
@@ -20,7 +21,6 @@ import (
 	log "github.com/cihub/seelog"
 	_struct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/micro/go-micro/client"
-	"google.golang.org/grpc"
 )
 {{range $interfaceIndex, $interface := .Interfaces}}
 func New{{.Name}}Client_({{.Name}} {{.Name}}, opts ...client.CallOption) {{$pkg}}.{{.Name}} {
