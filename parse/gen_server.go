@@ -348,7 +348,6 @@ func (file *File) convertServerResponse(field Field, expr string) string {
 
 		}
 	}
-	return field.Name
 }
 
 func (file *File) parseGolangStructType(field Field) string {
