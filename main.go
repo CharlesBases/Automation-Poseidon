@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"go/parser"
@@ -13,7 +12,6 @@ import (
 	"strings"
 
 	log "github.com/cihub/seelog"
-	"golang.org/x/tools/imports"
 
 	"github.com/CharlesBases/proto/parse"
 )
@@ -22,7 +20,6 @@ var (
 	goFile       = flag.String("file", "", "full path of the file")
 	generatePath = flag.String("path", "./pb/", "full path of the generate folder")
 	protoPackage = flag.String("package", "", "package name in .proto file")
-	isCS         = flag.Bool("cs", true, "whether to generate C/S code")
 )
 
 var (
@@ -115,7 +112,7 @@ func main() {
 
 	log.Info("run the protoc command ...")
 	dir := filepath.Dir(proFile)
-	out, err := exec.Command("protoc", "--proto_path="+dir+"/", "--gogofaster_out=plugins=grpc:"+dir+"/", "--micro_out="+dir+"/", proFile).CombinedOutput()
+	out, err := exec.Command("protoc", "--proto_path="+dir+"/", "--gogofaster_out=plugins=grpc:"+dir+"/", proFile).CombinedOutput()
 	if err != nil {
 		log.Error("protoc error: ", string(out))
 		return
@@ -123,89 +120,6 @@ func main() {
 	log.Info("protoc complete !")
 
 	gofile.GoTypeConfig()
-
-	if !*isCS {
-		log.Info("complete!")
-		return
-	}
-
-	// generate server file
-	serfile, err := createFile(serFile)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	defer serfile.Close()
-	bufferSer := bytes.NewBuffer([]byte{})
-	gofile.GenServer(bufferSer)
-	serfile.Write(bufferSer.Bytes())
-	byteSlice, serErr := imports.Process("", bufferSer.Bytes(), nil)
-	if serErr != nil {
-		log.Error(serErr)
-		return
-	}
-	serfile.Truncate(0)
-	serfile.Seek(0, 0)
-	serfile.Write(byteSlice)
-
-	// generate client file
-	clifile, err := createFile(cliFile)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	defer clifile.Close()
-	bufferCli := bytes.NewBuffer([]byte{})
-	gofile.GenClient(bufferCli)
-	clifile.Write(bufferCli.Bytes())
-	byteSlice, cliErr := imports.Process("", bufferCli.Bytes(), nil)
-	if cliErr != nil {
-		log.Error(cliErr)
-		return
-	}
-	clifile.Truncate(0)
-	clifile.Seek(0, 0)
-	clifile.Write(byteSlice)
-
-	os.MkdirAll(fmt.Sprintf("%s%s", *generatePath, "/micro"), 0755)
-
-	// generate micro server
-	microServer, err := createFile(microServerFile)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	defer microServer.Close()
-	bufferMicroServer := bytes.NewBuffer([]byte{})
-	gofile.GenMicroServer(bufferMicroServer)
-	microServer.Write(bufferMicroServer.Bytes())
-	byteSlice, microServerErr := imports.Process("", bufferMicroServer.Bytes(), nil)
-	if microServerErr != nil {
-		log.Error(microServerErr)
-		return
-	}
-	microServer.Truncate(0)
-	microServer.Seek(0, 0)
-	microServer.Write(byteSlice)
-
-	// generate micro client
-	microClient, err := createFile(microClientFile)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	defer microClient.Close()
-	bufferMicroClient := bytes.NewBuffer([]byte{})
-	gofile.GenMicroClient(bufferMicroClient)
-	microClient.Write(bufferMicroClient.Bytes())
-	byteSlice, microClientErr := imports.Process("", bufferMicroClient.Bytes(), nil)
-	if microClientErr != nil {
-		log.Error(microClientErr)
-		return
-	}
-	microClient.Truncate(0)
-	microClient.Seek(0, 0)
-	microClient.Write(byteSlice)
 
 	log.Info("complete!")
 }

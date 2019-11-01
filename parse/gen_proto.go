@@ -12,7 +12,7 @@ syntax = "proto3";
 
 package {{.Package}};
 
-import "google/protobuf/struct.proto";
+
 {{range $interfaceIndex, $interface := .Interfaces}}
 service {{.Name}} {
 {{range $funcsIndex, $func := .Funcs}}    rpc {{.Name}} ({{.Name}}Req_) returns ({{.Name}}Resp_) {} 
