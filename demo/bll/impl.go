@@ -1,7 +1,7 @@
 package bll
 
-type Bei struct{}
+type bei struct{}
 
-func NewBeiService() BeiService {
-	return new(Bei)
-}
+// func NewBeiService() BeiService {
+// 	return new(Bei)
+// }
