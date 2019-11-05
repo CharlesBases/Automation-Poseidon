@@ -4,32 +4,44 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"strings"
 
 	log "github.com/cihub/seelog"
 )
 
 const KitTemplate = `// this file is generated for {{.Name}}
-func (*{{service}}) {{.Name}}(request *{{parseRequest}}) *{{parseRequest}} {
+package bll
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+
+	"github.com/go-kit/kit/endpoint"
+	{{genimports}}
+)
+
+func (*{{service}}) {{.Name}}(request {{parseRequest}}) {{parseResponse}} {
 	return nil
 }
 
 func MakeEndpoint{{.Name}}(svc {{interface}}) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(*{{parseRequest}})
+		req := request.({{parseRequest}})
 		resp := svc.{{.Name}}(req)
 		return resp, nil
 	}
 }
 
 func DecodeRequest{{.Name}}(ctx context.Context, r *http.Request) (interface{}, error) {
-	request := new({{parseRequest}})
+	{{newRequest}}
 	if err := json.NewDecoder(r.Body).Decode(request); err != nil {
 		return nil, err
 	}
 	return request, nil
 }
 
-func EncodeResponseAdds(ctx context.Context, w http.ResponseWriter, response interface{}) error {
+func EncodeResponse{{.Name}}(ctx context.Context, w http.ResponseWriter, response interface{}) error {
 	return json.NewEncoder(w).Encode(response)
 }
 `
@@ -46,15 +58,29 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 		},
 		"parseRequest": func() string {
 			for index := range Func.Params {
-				return Func.Params[index].ProtoType
+				return Func.Params[index].GoType
 			}
 			return fmt.Sprintf("%sRequest", Func.Name)
 		},
 		"parseResponse": func() string {
 			for index := range Func.Results {
-				return Func.Results[index].ProtoType
+				return Func.Results[index].GoType
 			}
 			return fmt.Sprintf("%sResponse", Func.Name)
+		},
+		"genimports": func() template.HTML {
+			imports := strings.Builder{}
+			for k, v := range file.ImportA {
+				imports.WriteString("\n\t")
+				imports.WriteString(fmt.Sprintf(`%s "%s"`, k, v))
+			}
+			return template.HTML(imports.String())
+		},
+		"newRequest": func() string {
+			for index := range Func.Params {
+				return fmt.Sprintf(`request := new(%s)`, strings.TrimPrefix(Func.Params[index].GoType, "*"))
+			}
+			return fmt.Sprintf(`request := new(%s)`, Func.Name)
 		},
 	})
 	kitTemplate, err := temp.Parse(KitTemplate)
