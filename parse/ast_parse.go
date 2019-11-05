@@ -182,10 +182,8 @@ func (file *File) ParseField(astField []*ast.Field) []Field {
 							break
 						}
 					}
-					continue
 				}
 			}
-			continue
 		}
 
 		variableType, packageImport := func() (variableType string, packageImport string) {
