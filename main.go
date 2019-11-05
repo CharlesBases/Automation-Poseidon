@@ -23,12 +23,7 @@ var (
 )
 
 var (
-	serFile = "server.go"
-	cliFile = "client.go"
 	proFile = "proto"
-
-	microServerFile = "micro/server.go"
-	microClientFile = "micro/client.go"
 )
 
 func init() {
@@ -59,12 +54,7 @@ func main() {
 		*protoPackage = filepath.Base(*generatePath)
 	}
 
-	serFile = path.Join(*generatePath, fmt.Sprintf("%s.%s", *protoPackage, serFile))
-	cliFile = path.Join(*generatePath, fmt.Sprintf("%s.%s", *protoPackage, cliFile))
 	proFile = path.Join(*generatePath, fmt.Sprintf("%s.%s", *protoPackage, proFile))
-
-	microServerFile = path.Join(*generatePath, fmt.Sprintf("%s", microServerFile))
-	microClientFile = path.Join(*generatePath, fmt.Sprintf("%s", microClientFile))
 
 	os.MkdirAll(*generatePath, 0755)
 
@@ -101,6 +91,8 @@ func main() {
 	}
 	gofile.ParsePkgStruct(&parse.Package{PkgPath: gofile.PkgPath})
 
+	gofile.GoTypeConfig()
+
 	// generate proto file
 	profile, err := createFile(proFile)
 	if err != nil {
@@ -119,17 +111,11 @@ func main() {
 	}
 	log.Info("protoc complete !")
 
-	gofile.GoTypeConfig()
-
 	log.Info("complete!")
 }
 
 func createFile(fileName string) (*os.File, error) {
 	os.RemoveAll(fileName)
 	log.Info("create file: " + fileName)
-	file, err := os.Create(fileName)
-	if err != nil {
-		return file, err
-	}
-	return file, nil
+	return os.Create(fileName)
 }
