@@ -6,6 +6,7 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
@@ -101,14 +102,14 @@ func main() {
 	defer profile.Close()
 	gofile.GenProtoFile(profile)
 
-	// log.Info("run the protoc command ...")
-	// dir := filepath.Dir(proFile)
-	// out, err := exec.Command("protoc", "--proto_path="+dir+"/", "--gogofaster_out=plugins=grpc:"+dir+"/", proFile).CombinedOutput()
-	// if err != nil {
-	// 	log.Error("protoc error: ", string(out))
-	// 	return
-	// }
-	// log.Info("protoc complete !")
+	log.Info("run the protoc command ...")
+	dir := filepath.Dir(proFile)
+	out, err := exec.Command("protoc", "--proto_path="+dir+"/", "--gogofaster_out=plugins=grpc:"+dir+"/", proFile).CombinedOutput()
+	if err != nil {
+		log.Error("protoc error: ", string(out))
+		return
+	}
+	log.Info("protoc complete !")
 
 	for _, Interface := range gofile.Interfaces {
 		for _, Func := range Interface.Funcs {
