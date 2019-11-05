@@ -22,7 +22,7 @@ var (
 	goFile       = flag.String("file", "", "full path of the file")
 	generatePath = flag.String("path", "./pb/", "full path of the generate folder")
 	protoPackage = flag.String("package", "", "package name in .proto file")
-	isCS         = flag.Bool("cs", true, "whether to generate C/S code")
+	isCS         = flag.Bool("cs", false, "whether to generate C/S code")
 )
 
 var (
@@ -104,6 +104,8 @@ func main() {
 	}
 	gofile.ParsePkgStruct(&parse.Package{PkgPath: gofile.PkgPath})
 
+	gofile.GoTypeConfig()
+
 	// generate proto file
 	profile, err := createFile(proFile)
 	if err != nil {
@@ -121,8 +123,6 @@ func main() {
 		return
 	}
 	log.Info("protoc complete !")
-
-	gofile.GoTypeConfig()
 
 	if !*isCS {
 		log.Info("complete!")
@@ -213,9 +213,5 @@ func main() {
 func createFile(fileName string) (*os.File, error) {
 	os.RemoveAll(fileName)
 	log.Info("create file: " + fileName)
-	file, err := os.Create(fileName)
-	if err != nil {
-		return file, err
-	}
-	return file, nil
+	return os.Create(fileName)
 }

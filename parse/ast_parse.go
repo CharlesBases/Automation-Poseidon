@@ -3,10 +3,12 @@ package parse
 import (
 	"fmt"
 	"go/ast"
+	"go/parser"
 	"strconv"
 	"strings"
 
 	log "github.com/cihub/seelog"
+	"golang.org/x/tools/go/loader"
 )
 
 func (file *File) ParseFile(astFile *ast.File) {
@@ -146,10 +148,43 @@ func ParseExpr(expr ast.Expr) (fieldType string) {
 }
 
 func (file *File) ParseField(astField []*ast.Field) []Field {
-	fields := make([]Field, len(astField))
-	for key, field := range astField {
+	fields := make([]Field, 0)
+	for _, field := range astField {
 		fieldType := ParseExpr(field.Type)
 		protoType := file.parseType(fieldType)
+
+		if field.Names == nil {
+			conf := loader.Config{ParserMode: parser.ParseComments}
+			conf.Import(file.PkgPath)
+			program, err := conf.Load()
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+			astFiles := program.Package(file.PkgPath).Files
+			Root := Package{
+				PkgPath: file.PkgPath,
+				Files:   make([]File, 0, len(astFiles)),
+				root:    &Package{MessageTypes: map[string][]string{}},
+			}
+			for _, astFile := range astFiles {
+				structFile := Root.ParseStruct([]Message{{
+					Name:     fieldType,
+					ExprName: fieldType,
+					FullName: file.PkgPath,
+				}}, astFile)
+				if len(structFile.Structs) != 0 {
+					for _, Struct := range structFile.Structs {
+						if Struct.Name == fieldType {
+							for _, field := range Struct.Fields {
+								fields = append(fields, field)
+							}
+							break
+						}
+					}
+				}
+			}
+		}
 
 		variableType, packageImport := func() (variableType string, packageImport string) {
 			name := strings.TrimPrefix(strings.TrimPrefix(fieldType, "[]"), "*")
@@ -175,15 +210,17 @@ func (file *File) ParseField(astField []*ast.Field) []Field {
 
 		for _, value := range field.Names {
 			fieldName := title(value.Name)
-			fields[key] = Field{
-				Name:         value.Name,
-				FieldName:    value.Name,
-				Variable:     fieldName,
-				VariableType: variableType,
-				GoType:       fieldType,
-				Package:      packageImport,
-				ProtoType:    protoType,
-			}
+			fields = append(fields,
+				Field{
+					Name:         value.Name,
+					FieldName:    value.Name,
+					Variable:     fieldName,
+					VariableType: variableType,
+					GoType:       fieldType,
+					Package:      packageImport,
+					ProtoType:    protoType,
+				},
+			)
 		}
 	}
 	return fields

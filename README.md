@@ -61,12 +61,14 @@ Usage of proto:
 ```
 
 ## 支持类型
+* 匿名参数
 * golang基础类型
 * error
 * interface{}
 * map[string]interface{}
 
 ## 不支持类型
+* 匿名结构体
 * byte
 * map slice
 * slice point
