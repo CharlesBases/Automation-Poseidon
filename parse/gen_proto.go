@@ -11,8 +11,6 @@ const ProtoTemplate = `// this file is generated from {{.PkgPath}}
 syntax = "proto3";
 
 package {{.Package}};
-
-
 {{range $interfaceIndex, $interface := .Interfaces}}
 service {{.Name}} {
 {{range $funcsIndex, $func := .Funcs}}    rpc {{.Name}} ({{.Name}}Req_) returns ({{.Name}}Resp_) {} 

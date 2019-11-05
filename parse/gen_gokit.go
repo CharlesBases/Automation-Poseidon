@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"path"
 	"strings"
 
 	log "github.com/cihub/seelog"
 )
 
 const KitTemplate = `// this file is generated for {{.Name}}
-package bll
+package {{package}}
 
 import (
 	"context"
@@ -50,6 +51,9 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 	log.Info(fmt.Sprintf("generating %s files ...", Func.Name))
 	temp := template.New(fmt.Sprintf("%s.go", Func.Name))
 	temp.Funcs(template.FuncMap{
+		"package": func() string {
+			return path.Base(path.Dir(file.GenPath))
+		},
 		"service": func() string {
 			return file.Package
 		},

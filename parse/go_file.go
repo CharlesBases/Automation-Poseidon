@@ -41,7 +41,7 @@ func (file *File) ParsePkgStruct(root *Package) {
 		conf.Import(key)
 		program, err := conf.Load()
 		if err != nil {
-			log.Error(err) // load error
+			log.Error(err)
 			continue
 		}
 		astFiles := program.Package(key).Files
