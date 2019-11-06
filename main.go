@@ -116,7 +116,7 @@ func main() {
 		log.Info("protoc complete !")
 	}
 
-	// gen mplement
+	// gen implement
 	controllerPkg = path.Join("../", controllerPkg)
 	os.MkdirAll(controllerPkg, 0755)
 
