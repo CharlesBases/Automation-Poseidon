@@ -17,14 +17,15 @@ import (
 )
 
 var (
-	goFile       = flag.String("file", "", "full path of the file")
+	sourceFile   = flag.String("file", "", "full path of the file")
 	generatePath = flag.String("path", "./pb/", "full path of the generate folder")
 	protoPackage = flag.String("package", "", "package name in .proto file")
 	genProto     = flag.Bool("proto", false, "generate proto file or not")
 )
 
 var (
-	proFile = "proto"
+	proFile       = "proto"
+	controllerPkg = "controllers"
 )
 
 func init() {
@@ -59,9 +60,9 @@ func main() {
 
 	os.MkdirAll(*generatePath, 0755)
 
-	log.Info("parsing files for go: ", *goFile)
+	log.Info("parsing files for go: ", *sourceFile)
 
-	astFile, err := parser.ParseFile(token.NewFileSet(), *goFile, nil, 0) // 获取文件信息
+	astFile, err := parser.ParseFile(token.NewFileSet(), *sourceFile, nil, 0) // 获取文件信息
 	if err != nil {
 		log.Error(err)
 		return
@@ -70,7 +71,7 @@ func main() {
 		slice := make([]string, 3)
 		slice[0] = *protoPackage
 		genPath, _ := filepath.Abs(*generatePath)
-		pkgPath := filepath.Dir(*goFile)
+		pkgPath := filepath.Dir(*sourceFile)
 		absPath, _ := filepath.Abs(".")
 		list := filepath.SplitList(os.Getenv("GOPATH"))
 		for _, val := range list {
@@ -115,10 +116,21 @@ func main() {
 		log.Info("protoc complete !")
 	}
 
+	// gen mplement
+	controller := path.Join(gofile.PkgPath, controllerPkg)
+	os.MkdirAll(controller, 0755)
+	implementFile, err := createKitFile(path.Join(controller, "implement.go"))
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	gofile.GenImplFile(implementFile)
+
+	// gen func
 	for _, Interface := range gofile.Interfaces {
 		for _, Func := range Interface.Funcs {
 			log.Info("create file: " + Func.Name)
-			kitfile, err := createKitFile(path.Join(filepath.Dir(*goFile), fmt.Sprintf("%s.go", Func.Name)))
+			kitfile, err := createKitFile(path.Join(filepath.Dir(*sourceFile), fmt.Sprintf("%s.go", Func.Name)))
 			if err != nil {
 				log.Error(err)
 				return
