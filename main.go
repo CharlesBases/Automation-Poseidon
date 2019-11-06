@@ -20,6 +20,7 @@ var (
 	goFile       = flag.String("file", "", "full path of the file")
 	generatePath = flag.String("path", "./pb/", "full path of the generate folder")
 	protoPackage = flag.String("package", "", "package name in .proto file")
+	genProto     = flag.Bool("proto", false, "generate proto file or not")
 )
 
 var (
@@ -102,14 +103,16 @@ func main() {
 	defer profile.Close()
 	gofile.GenProtoFile(profile)
 
-	log.Info("run the protoc command ...")
-	dir := filepath.Dir(proFile)
-	out, err := exec.Command("protoc", "--proto_path="+dir+"/", "--gogofaster_out=plugins=grpc:"+dir+"/", proFile).CombinedOutput()
-	if err != nil {
-		log.Error("protoc error: ", string(out))
-		return
+	if *genProto {
+		log.Info("run the protoc command ...")
+		dir := filepath.Dir(proFile)
+		out, err := exec.Command("protoc", "--proto_path="+dir+"/", "--gogofaster_out=plugins=grpc:"+dir+"/", proFile).CombinedOutput()
+		if err != nil {
+			log.Error("protoc error: ", string(out))
+			return
+		}
+		log.Info("protoc complete !")
 	}
-	log.Info("protoc complete !")
 
 	for _, Interface := range gofile.Interfaces {
 		for _, Func := range Interface.Funcs {
