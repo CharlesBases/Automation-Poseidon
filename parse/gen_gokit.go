@@ -11,7 +11,7 @@ import (
 )
 
 const KitTemplate = `// this file is generated for {{.Name}}
-package {{package}}
+package controllers
 
 import (
 	"context"
@@ -58,7 +58,7 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 			return file.Package
 		},
 		"interface": func() string {
-			return Interface.Name
+			return fmt.Sprintf("%s.%s", path.Base(path.Dir(file.GenPath)), Interface.Name)
 		},
 		"parseRequest": func() string {
 			for index := range Func.Params {
@@ -74,6 +74,8 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 		},
 		"genimports": func() template.HTML {
 			imports := strings.Builder{}
+			imports.WriteString("\n\t")
+			imports.WriteString(fmt.Sprintf(`%s "%s"`, path.Base(path.Dir(file.GenPath)), path.Dir(file.GenPath)))
 			for k, v := range file.ImportA {
 				imports.WriteString("\n\t")
 				imports.WriteString(fmt.Sprintf(`%s "%s"`, k, v))

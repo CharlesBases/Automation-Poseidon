@@ -58,8 +58,6 @@ func main() {
 
 	proFile = path.Join(*generatePath, fmt.Sprintf("%s.%s", *protoPackage, proFile))
 
-	os.MkdirAll(*generatePath, 0755)
-
 	log.Info("parsing files for go: ", *sourceFile)
 
 	astFile, err := parser.ParseFile(token.NewFileSet(), *sourceFile, nil, 0) // 获取文件信息
@@ -96,6 +94,8 @@ func main() {
 	gofile.GoTypeConfig()
 
 	if *genProto {
+		os.MkdirAll(*generatePath, 0755)
+
 		// generate proto file
 		profile, err := createFile(proFile)
 		if err != nil {
@@ -117,20 +117,24 @@ func main() {
 	}
 
 	// gen mplement
-	controller := path.Join(gofile.PkgPath, controllerPkg)
-	os.MkdirAll(controller, 0755)
-	implementFile, err := createKitFile(path.Join(controller, "implement.go"))
+	controllerPkg = path.Join("../", controllerPkg)
+	os.MkdirAll(controllerPkg, 0755)
+
+	implementFile, err := createKitFile(path.Join(controllerPkg, "implement.go"))
 	if err != nil {
 		log.Error(err)
 		return
 	}
-	gofile.GenImplFile(implementFile)
+	gofile.GenImplFile(&parse.Package{
+		Name: "controllers",
+		Path: path.Dir(gofile.GenPath),
+	}, implementFile)
 
 	// gen func
 	for _, Interface := range gofile.Interfaces {
 		for _, Func := range Interface.Funcs {
 			log.Info("create file: " + Func.Name)
-			kitfile, err := createKitFile(path.Join(filepath.Dir(*sourceFile), fmt.Sprintf("%s.go", Func.Name)))
+			kitfile, err := createKitFile(path.Join(controllerPkg, fmt.Sprintf("%s.go", Func.Name)))
 			if err != nil {
 				log.Error(err)
 				return
