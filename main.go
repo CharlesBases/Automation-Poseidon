@@ -94,16 +94,17 @@ func main() {
 
 	gofile.GoTypeConfig()
 
-	// generate proto file
-	profile, err := createFile(proFile)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	defer profile.Close()
-	gofile.GenProtoFile(profile)
-
 	if *genProto {
+		// generate proto file
+		profile, err := createFile(proFile)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		defer profile.Close()
+		gofile.GenProtoFile(profile)
+
+		// run protoc
 		log.Info("run the protoc command ...")
 		dir := filepath.Dir(proFile)
 		out, err := exec.Command("protoc", "--proto_path="+dir+"/", "--gogofaster_out=plugins=grpc:"+dir+"/", proFile).CombinedOutput()
