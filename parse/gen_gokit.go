@@ -18,12 +18,23 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"gitlab.ifchange.com/bot/gokitcommon/web"
+
 	"github.com/go-kit/kit/endpoint"
+	httptransport "github.com/go-kit/kit/transport/http"
 	{{genimports}}
 )
 
 func (*{{service}}) {{.Name}}(request {{parseRequest}}) {{parseResponse}} {
 	return nil
+}
+
+func {{.Name}}() http.Handler {
+	return httptransport.NewServer(
+		MakeEndpoint{{.Name}}({{service}}service),
+		DecodeRequest{{.Name}},
+		EncodeResponse{{.Name}},
+	)
 }
 
 func MakeEndpoint{{.Name}}(svc {{interface}}) endpoint.Endpoint {
@@ -43,7 +54,7 @@ func DecodeRequest{{.Name}}(ctx context.Context, r *http.Request) (interface{}, 
 }
 
 func EncodeResponse{{.Name}}(ctx context.Context, w http.ResponseWriter, response interface{}) error {
-	return json.NewEncoder(w).Encode(response)
+	return web.Encode(w, response)
 }
 `
 
