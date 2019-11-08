@@ -19,6 +19,7 @@ import (
 	"net/http"
 
 	"gitlab.ifchange.com/bot/gokitcommon/web"
+	"gopkg.in/go-playground/validator.v9"
 
 	"github.com/go-kit/kit/endpoint"
 	httptransport "github.com/go-kit/kit/transport/http"
@@ -26,7 +27,18 @@ import (
 )
 
 func (*{{service}}) {{.Name}}(request {{parseRequest}}) {{parseResponse}} {
-	return nil
+	response := {{newResponse}}
+	defer func() {
+		if response.Error.ErrNo != 0 {
+			response.Results = nil
+		}
+	}()
+	if err := validator.New().Struct(request); err != nil {
+		response.Error.WebError(web.ParamsErr)
+		return response
+	}
+
+	return response
 }
 
 func {{.Name}}() http.Handler {
@@ -82,6 +94,12 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 				return Func.Results[index].GoType
 			}
 			return fmt.Sprintf("%sResponse", Func.Name)
+		},
+		"newResponse": func() string {
+			for index := range Func.Results {
+				return fmt.Sprintf("new(%s)", strings.TrimLeft(Func.Results[index].GoType, "*"))
+			}
+			return fmt.Sprintf("new(%sResponse)", Func.Name)
 		},
 		"genimports": func() template.HTML {
 			imports := strings.Builder{}
