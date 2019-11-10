@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	goFile       = flag.String("file", "", "full path of the file")
+	sourceFile   = flag.String("file", "", "full path of the file")
 	generatePath = flag.String("path", "./pb/", "full path of the generate folder")
 	protoPackage = flag.String("package", "", "package name in .proto file")
 )
@@ -58,18 +58,18 @@ func main() {
 
 	os.MkdirAll(*generatePath, 0755)
 
-	log.Info("parsing files for go: ", *goFile)
+	log.Info("parsing files for go: ", *sourceFile)
 
-	astFile, err := parser.ParseFile(token.NewFileSet(), *goFile, nil, 0) // 获取文件信息
+	astFile, err := parser.ParseFile(token.NewFileSet(), *sourceFile, nil, 0) // 获取文件信息
 	if err != nil {
 		log.Error(err)
 		return
 	}
-	gofile := parse.NewFile(func() (string, string, string) {
+	sourceFile := parse.NewFile(func() (string, string, string) {
 		slice := make([]string, 3)
 		slice[0] = *protoPackage
 		genPath, _ := filepath.Abs(*generatePath)
-		pkgPath := filepath.Dir(*goFile)
+		pkgPath := filepath.Dir(*sourceFile)
 		absPath, _ := filepath.Abs(".")
 		list := filepath.SplitList(os.Getenv("GOPATH"))
 		for _, val := range list {
@@ -85,13 +85,13 @@ func main() {
 		}
 		return slice[0], slice[1], slice[2]
 	}())
-	gofile.ParseFile(astFile)
-	if len(gofile.Interfaces) == 0 {
+	sourceFile.ParseFile(astFile)
+	if len(sourceFile.Interfaces) == 0 {
 		return
 	}
-	gofile.ParsePkgStruct(&parse.Package{PkgPath: gofile.PkgPath})
+	sourceFile.ParsePkgStruct(&parse.Package{PkgPath: sourceFile.PkgPath})
 
-	gofile.GoTypeConfig()
+	sourceFile.GoTypeConfig()
 
 	// generate proto file
 	profile, err := createFile(proFile)
@@ -100,7 +100,7 @@ func main() {
 		return
 	}
 	defer profile.Close()
-	gofile.GenProtoFile(profile)
+	sourceFile.GenProtoFile(profile)
 
 	log.Info("run the protoc command ...")
 	dir := filepath.Dir(proFile)
