@@ -54,6 +54,8 @@ func main() {
 		*protoPackage = filepath.Base(*generatePath)
 	}
 
+	*sourceFile, _ = filepath.Abs(*sourceFile)
+
 	proFile = path.Join(*generatePath, fmt.Sprintf("%s.%s", *protoPackage, proFile))
 
 	os.MkdirAll(*generatePath, 0755)
@@ -70,17 +72,14 @@ func main() {
 		slice[0] = *protoPackage
 		genPath, _ := filepath.Abs(*generatePath)
 		pkgPath := filepath.Dir(*sourceFile)
-		absPath, _ := filepath.Abs(".")
 		list := filepath.SplitList(os.Getenv("GOPATH"))
 		for _, val := range list {
-			if strings.Contains(pkgPath, fmt.Sprintf("%s%s", val, "/src/")) {
-				slice[1] = pkgPath[len(val)+5:]
+			srcpath := filepath.Join(val, "/src/")
+			if strings.Contains(pkgPath, srcpath) {
+				slice[1] = strings.TrimPrefix(pkgPath, srcpath)[1:]
 			}
-			if strings.Contains(absPath, fmt.Sprintf("%s%s", val, "/src/")) {
-				slice[1] = absPath[len(val)+5:]
-			}
-			if strings.Contains(genPath, fmt.Sprintf("%s%s", val, "/src/")) {
-				slice[2] = genPath[len(val)+5:]
+			if strings.Contains(genPath, srcpath) {
+				slice[2] = strings.TrimPrefix(genPath, srcpath)[1:]
 			}
 		}
 		return slice[0], slice[1], slice[2]
