@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	sourceFile       = flag.String("file", "", "full path of the file")
+	sourceFile   = flag.String("file", "", "full path of the file")
 	generatePath = flag.String("path", "./pb/", "full path of the generate folder")
 	protoPackage = flag.String("package", "", "package name in .proto file")
 )
