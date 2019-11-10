@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	goFile       = flag.String("file", "", "full path of the file")
+	sourceFile       = flag.String("file", "", "full path of the file")
 	generatePath = flag.String("path", "./pb/", "full path of the generate folder")
 	protoPackage = flag.String("package", "", "package name in .proto file")
 )
@@ -58,9 +58,9 @@ func main() {
 
 	os.MkdirAll(*generatePath, 0755)
 
-	log.Info("parsing files for go: ", *goFile)
+	log.Info("parsing files for go: ", *sourceFile)
 
-	astFile, err := parser.ParseFile(token.NewFileSet(), *goFile, nil, 0) // 获取文件信息
+	astFile, err := parser.ParseFile(token.NewFileSet(), *sourceFile, nil, 0) // 获取文件信息
 	if err != nil {
 		log.Error(err)
 		return
@@ -69,7 +69,7 @@ func main() {
 		slice := make([]string, 3)
 		slice[0] = *protoPackage
 		genPath, _ := filepath.Abs(*generatePath)
-		pkgPath := filepath.Dir(*goFile)
+		pkgPath := filepath.Dir(*sourceFile)
 		absPath, _ := filepath.Abs(".")
 		list := filepath.SplitList(os.Getenv("GOPATH"))
 		for _, val := range list {

@@ -39,16 +39,6 @@ var (
 		"error":       {},
 		"interface{}": {},
 	}
-	protoType2RPCType = map[string]string{
-		"bool":   "bool",
-		"bytes":  "[]byte",
-		"string": "string",
-		"sint64": "int64",
-		"uint64": "uint64",
-		"double": "float64",
-		// "google.protobuf.Value":  "*_struct.Value",
-		// "google.protobuf.Struct": "*_struct.Struct",
-	}
 )
 
 type Package struct {
@@ -61,8 +51,8 @@ type Package struct {
 }
 
 type Message struct {
-	Name     string //struct名字
-	ExprName string //调用名 （pager.PagerListResp）
+	Name     string // struct名字
+	ExprName string // 调用名 （pager.PagerListResp）
 	FullName string // 全名 （带包名）
 }
 

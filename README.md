@@ -1,24 +1,5 @@
-# Automation
-
-代码自动化
-
-## 导航
-* [Zeus](https://github.com/CharlesBases/Automation-Zeus) - - - - - - - - - - - - - - - - - - - - - - MySQL 表结构自动生成 Golang 结构体
-* [Hera](https://github.com/CharlesBases/Automation-Hera) - - - - - - - - - - - - - - - - - - - - - - Golang 结构体生成 Json 文档
-* [Hephaestus](https://github.com/CharlesBases/Automation-Hephaestus)
-* [Poseidon](https://github.com/CharlesBases/Automation-Poseidon) - - - - - - - - - - - - - - - - - - - 根据接口生成 RPC 文件
-* [Hestia](https://github.com/CharlesBases/Automation-Hestia)
-* [Hades](https://github.com/CharlesBases/Automation-Hades)
-* [Hermes](https://github.com/CharlesBases/Automation-Hermes)
-* [Ares](https://github.com/CharlesBases/Automation-Ares)
-* [Artemis](https://github.com/CharlesBases/Automation-Artemis)
-* [Apollo](https://github.com/CharlesBases/Automation-Apollo)
-* [Aphrodite](https://github.com/CharlesBases/Automation-Aphrodite)
-* [Athena](https://github.com/CharlesBases/Automation-Athena)
-
-# Automation-Poseidon
-根据接口自动生成rpc文件
-
+## 说明
+	根据接口自动生成rpc文件
 ###### 备注
 * 使用 protoc-gen-gogofaster 插件生成pb.go文件
 ```
