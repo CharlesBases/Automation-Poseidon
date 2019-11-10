@@ -7,6 +7,17 @@ import (
 )
 
 var (
+	golangType2JsonType = map[string]string{
+		"int":     "number",
+		"int32":   "number",
+		"int64":   "number",
+		"uint":    "number",
+		"uint32":  "number",
+		"uint64":  "number",
+		"float32": "number",
+		"float64": "number",
+		"string":  "string",
+	}
 	golangBaseType2ProtoBaseType = map[string]string{
 		"bool":    "bool",
 		"string":  "string",
@@ -93,6 +104,7 @@ type Field struct {
 	FieldName    string // 原参数名或返回值名的可导出形式
 	GoType       string // 正常go类型
 	ProtoType    string // proto类型
+	JsonType     string // json类型
 	GoExpr       string // go类型的引用前缀
 	Package      string // go类型定义的所在包
 	Variable     string // 被赋值变量

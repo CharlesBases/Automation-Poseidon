@@ -212,13 +212,19 @@ func (file *File) ParseField(astField []*ast.Field) []Field {
 			fieldName := title(value.Name)
 			fields = append(fields,
 				Field{
-					Name:         value.Name,
-					FieldName:    value.Name,
+					Name:      value.Name,
+					FieldName: value.Name,
+					GoType:    fieldType,
+					ProtoType: protoType,
+					JsonType: func() string {
+						if value, ok := golangType2JsonType[fieldType]; ok {
+							return value
+						}
+						return "object"
+					}(),
+					Package:      packageImport,
 					Variable:     fieldName,
 					VariableType: variableType,
-					GoType:       fieldType,
-					Package:      packageImport,
-					ProtoType:    protoType,
 				},
 			)
 		}
