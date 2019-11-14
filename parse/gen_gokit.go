@@ -26,8 +26,7 @@ import (
 	{{genimports}}
 )
 
-func (*{{service}}) {{.Name}}(request {{parseRequest}}) {{parseResponse}} {
-	response := {{newResponse}}
+func (*{{service}}) {{.Name}}(request {{parseRequest}}) ({{parseResponse}}) {
 	defer func() {
 		if response.Error.ErrNo != 0 {
 			response.Results = nil
@@ -91,9 +90,9 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 		},
 		"parseResponse": func() string {
 			for index := range Func.Results {
-				return Func.Results[index].GoType
+				return fmt.Sprintf("response %s", Func.Results[index].GoType )
 			}
-			return fmt.Sprintf("%sResponse", Func.Name)
+			return fmt.Sprintf("response %sResponse", Func.Name)
 		},
 		"newResponse": func() string {
 			for index := range Func.Results {
