@@ -10,7 +10,7 @@ import (
 	log "github.com/cihub/seelog"
 )
 
-const KitTemplate = `// this file is generated for {{.Name}}
+const KitTemplate = `// this file is generated for {{.Name}} {{$Request := parseRequest}} {{$Response := parseResponse}}
 package controllers
 
 import (
@@ -26,18 +26,33 @@ import (
 	{{genimports}}
 )
 
-func (*{{service}}) {{.Name}}(request {{parseRequest}}) ({{parseResponse}}) {
+func (*{{service}}) {{.Name}}(request *{{$Request}}) (response *{{$Response}}) {
+	// response.Results
+	results := {{results}}
+	// response.Error
+	Error := new(web.Error)
 	defer func() {
-		if response.Error.ErrNo != 0 {
-			response.Results = nil
+		if Error.ErrNo != 0 {
+			response = &{{$Response}}{
+				Error: core.Error{
+					ErrNo:  Error.ErrNo,
+					ErrMsg: Error.ErrMsg,
+				},
+			}
+		} else {
+			response = &{{$Response}}{
+				Results: results,
+			}
 		}
 	}()
 	if err := validator.New().Struct(request); err != nil {
-		response.Error.WebError(web.ParamsErr)
-		return response
+		Error.WebError(web.ParamsErr)
+		return
 	}
 
-	return response
+	// Do something
+
+	return 
 }
 
 func {{.Name}}() http.Handler {
@@ -50,14 +65,14 @@ func {{.Name}}() http.Handler {
 
 func MakeEndpoint{{.Name}}(svc {{interface}}) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.({{parseRequest}})
+		req := request.(*{{$Request}})
 		resp := svc.{{.Name}}(req)
 		return resp, nil
 	}
 }
 
 func DecodeRequest{{.Name}}(ctx context.Context, r *http.Request) (interface{}, error) {
-	{{newRequest}}
+	request := new({{$Request}})
 	if err := json.NewDecoder(r.Body).Decode(request); err != nil {
 		return nil, err
 	}
@@ -83,22 +98,10 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 			return fmt.Sprintf("%s.%s", path.Base(path.Dir(file.GenPath)), Interface.Name)
 		},
 		"parseRequest": func() string {
-			for index := range Func.Params {
-				return Func.Params[index].GoType
-			}
-			return fmt.Sprintf("%sRequest", Func.Name)
+			return strings.TrimPrefix(Func.Params[0].GoType,"*")
 		},
 		"parseResponse": func() string {
-			for index := range Func.Results {
-				return fmt.Sprintf("response %s", Func.Results[index].GoType )
-			}
-			return fmt.Sprintf("response %sResponse", Func.Name)
-		},
-		"newResponse": func() string {
-			for index := range Func.Results {
-				return fmt.Sprintf("new(%s)", strings.TrimLeft(Func.Results[index].GoType, "*"))
-			}
-			return fmt.Sprintf("new(%sResponse)", Func.Name)
+			return strings.TrimPrefix(Func.Results[0].GoType, "*")
 		},
 		"genimports": func() template.HTML {
 			imports := strings.Builder{}
@@ -110,11 +113,8 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 			}
 			return template.HTML(imports.String())
 		},
-		"newRequest": func() string {
-			for index := range Func.Params {
-				return fmt.Sprintf(`request := new(%s)`, strings.TrimPrefix(Func.Params[index].GoType, "*"))
-			}
-			return fmt.Sprintf(`request := new(%s)`, Func.Name)
+		"results": func() (string) {
+			return fmt.Sprintf("new(%s)",strings.ReplaceAll(strings.TrimPrefix(Func.Results[0].GoType,"*"),"Response","Resp") )
 		},
 	})
 	kitTemplate, err := temp.Parse(KitTemplate)
