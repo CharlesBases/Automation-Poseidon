@@ -15,7 +15,7 @@ import (
 	log "github.com/cihub/seelog"
 	"golang.org/x/tools/imports"
 
-	"github.com/CharlesBases/proto/parse"
+	"github.com/CharlesBases/Automation-Poseidon/parse"
 )
 
 var (
