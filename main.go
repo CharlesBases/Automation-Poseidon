@@ -13,7 +13,7 @@ import (
 
 	log "github.com/cihub/seelog"
 
-	"github.com/CharlesBases/proto/parse"
+	"github.com/CharlesBases/Automation-Poseidon/parse"
 )
 
 var (
