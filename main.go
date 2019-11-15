@@ -20,6 +20,7 @@ var (
 	sourceFile   = flag.String("file", "", "full path of the file")
 	generatePath = flag.String("path", "./pb/", "full path of the generate folder")
 	protoPackage = flag.String("package", "", "package name in .proto file")
+	update       = flag.Bool("update", false, "update existing interface or not")
 	genProto     = flag.Bool("proto", false, "generate proto file or not")
 )
 
@@ -133,6 +134,9 @@ func main() {
 	// gen func
 	for _, Interface := range gofile.Interfaces {
 		for _, Func := range Interface.Funcs {
+			if !*update && isexit(path.Join(controllerPkg, fmt.Sprintf("%s.go", Func.Name))) {
+				continue
+			}
 			log.Info("create file: " + Func.Name)
 			kitfile, err := createKitFile(path.Join(controllerPkg, fmt.Sprintf("%s.go", Func.Name)))
 			if err != nil {
@@ -144,6 +148,13 @@ func main() {
 	}
 
 	log.Info("complete!")
+}
+
+func isexit(filename string) bool {
+	if _, err := os.Stat(filename); err == nil {
+		return true
+	}
+	return false
 }
 
 func createFile(fileName string) (*os.File, error) {
