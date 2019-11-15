@@ -26,6 +26,36 @@ import (
 	{{genimports}}
 )
 
+/*
+@api {post} /interviews/get  获取试题
+@apiVersion 0.1.0
+@apiGroup Interviews
+@apiDescription 获取试题 一套题（uuid）包含多张试卷（interview_uuid），interview_id为试卷的类型
+
+@apiParam {Object} p 请求参数
+@apiParam {String} uuid 套题id
+@apiParam {Number} interview_id 类型id(1素质测评 2潜力测评)
+@apiParam {Object} param 参数
+
+@apiParamExample {json} Request-Example:
+{
+
+}
+
+@apiSuccess {Object} results 返回结果
+@apiSuccess {Bool} result.interviews_info 全部试卷
+@apiSuccess {Bool} result.interviews_info.status 试卷状态 未开始 1已开始 2完成
+@apiSuccess {Bool} result.interviews_info.uuid 测评试卷id
+@apiSuccess {Bool} result.interviews_info.created_at 测评试卷创建时间，10位时间戳
+@apiSuccess {Bool} result.cur_interview_id 当前试卷类型 1性格测评 5潜力测评
+@apiSuccess {Bool} result.cur_interview_uuid 当前试卷id
+@apiSuccess {Bool} result.data 测评数据
+
+@apiSuccessExample {json} Response-Example:
+{
+
+}
+*/
 func (*{{service}}) {{.Name}}(request *{{$Request}}) (response *{{$Response}}) {
 	// response.Results
 	results := {{results}}
