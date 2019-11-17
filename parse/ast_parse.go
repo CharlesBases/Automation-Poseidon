@@ -94,7 +94,7 @@ func (file *File) ParseStruct(name string, structType *ast.StructType) Struct {
 		}
 	}
 	s.Name = name
-	s.Pkg = file.PackagePath
+	s.Package = file.PackagePath
 	return s
 }
 

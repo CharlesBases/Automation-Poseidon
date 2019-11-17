@@ -229,6 +229,9 @@ func (file *File) parseRequestParams(fields []Field) string {
 
 	for _, field := range RequestStruct.Fields {
 		doc.WriteString(fmt.Sprintf("@apiParam {%s} %s %s\n", field.JsonType, ensnake(field.Name), field.Comment))
+		if field.Package != "" {
+			doc.WriteString(fmt.Sprintf("%s", file.parseRequestParams([]Field{field})))
+		}
 	}
 
 	return doc.String()

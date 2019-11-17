@@ -10,6 +10,8 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	log "github.com/cihub/seelog"
 
@@ -51,8 +53,9 @@ func main() {
 	defer log.Flush()
 	flag.Parse()
 
-	// swg := sync.WaitGroup{}
-	// swg.Add(4)
+	swg := sync.WaitGroup{}
+
+	sourcefilechannel := make(chan int64)
 
 	protofile := path.Join(*generateProtoPath, fmt.Sprintf("%s.proto", *protoPackage))
 
@@ -66,99 +69,125 @@ func main() {
 	}
 
 	gofile := new(parse.File)
-	// go func() {
-	// 	defer swg.Done()
+	swg.Add(1)
+	go func() {
+		defer swg.Done()
 
-	src = func() string {
-		list := filepath.SplitList(os.Getenv("GOPATH"))
-		for _, gopath := range list {
-			return filepath.Join(gopath, "src")
+		src = func() string {
+			list := filepath.SplitList(os.Getenv("GOPATH"))
+			for _, gopath := range list {
+				return filepath.Join(gopath, "src")
+			}
+			return "src"
+		}()
+
+		*gofile = parse.File{
+			Name:         filepath.Base(*sourceFile),
+			PackagePath:  strings.TrimPrefix(filepath.Dir(*sourceFile), src)[1:],
+			ProtoPackage: *protoPackage,
+			GenProtoPath: func() string {
+				abspath, err := filepath.Abs(*generateProtoPath)
+				if err != nil {
+					log.Error("parse generate proto path error: ", err)
+					os.Exit(1)
+				}
+				if *generateProto {
+					os.MkdirAll(abspath, 0755)
+				}
+				return strings.TrimPrefix(abspath, src)[1:]
+			}(),
+			GenInterPath: func() string {
+				abspath, err := filepath.Abs(*generateInterPath)
+				if err != nil {
+					log.Error("parse generate interface path error: ", err)
+					os.Exit(1)
+				}
+				os.MkdirAll(abspath, 0755)
+				return strings.TrimPrefix(abspath, src)[1:]
+			}(),
 		}
-		return "src"
+
+		sourcefilechannel <- time.Now().UnixNano()
 	}()
 
-	*gofile = parse.File{
-		Name:         filepath.Base(*sourceFile),
-		PackagePath:  strings.TrimPrefix(filepath.Dir(*sourceFile), src)[1:],
-		ProtoPackage: *protoPackage,
-		GenProtoPath: func() string {
-			abspath, err := filepath.Abs(*generateProtoPath)
-			if err != nil {
-				log.Error("parse generate proto path error: ", err)
-				os.Exit(1)
-			}
-			if *generateProto {
-				os.MkdirAll(abspath, 0755)
-			}
-			return strings.TrimPrefix(abspath, src)[1:]
-		}(),
-		GenInterPath: func() string {
-			abspath, err := filepath.Abs(*generateInterPath)
-			if err != nil {
-				log.Error("parse generate interface path error: ", err)
-				os.Exit(1)
-			}
-			os.MkdirAll(abspath, 0755)
-			return strings.TrimPrefix(abspath, src)[1:]
-		}(),
-	}
-	// }()
+	<-sourcefilechannel
 
 	gofile.ParseFile(astFile)
 	if len(gofile.Interfaces) == 0 {
 		log.Error("no interface found")
-		return
+		log.Flush()
+		os.Exit(1)
 	}
+
 	// 解析源文件包下结构体
 	gofile.ParsePkgStruct(&parse.Package{PackagePath: gofile.PackagePath})
 
 	gofile.GoTypeConfig()
 
-	if *generateProto {
-		// generate proto file
-		profile, err := createFile(protofile)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		defer profile.Close()
-		gofile.GenProtoFile(profile)
+	// generate proto file
+	swg.Add(1)
+	go func() {
+		defer swg.Done()
 
-		// run protoc
-		log.Info("run the protoc command ...")
-		dir := filepath.Dir(protofile)
-		out, err := exec.Command("protoc", "--proto_path="+dir+"/", "--gogofaster_out=plugins=grpc:"+dir+"/", protofile).CombinedOutput()
-		if err != nil {
-			log.Error("protoc error: ", string(out))
-			return
+		if *generateProto {
+			profile, err := createFile(protofile)
+			if err != nil {
+				log.Error(err)
+				log.Flush()
+				os.Exit(1)
+			}
+			defer profile.Close()
+			gofile.GenProtoFile(profile)
+
+			// run protoc
+			log.Info("run the protoc command ...")
+			dir := filepath.Dir(protofile)
+			out, err := exec.Command("protoc", "--proto_path="+dir+"/", "--gogofaster_out=plugins=grpc:"+dir+"/", protofile).CombinedOutput()
+			if err != nil {
+				log.Error("protoc error: ", string(out))
+				log.Flush()
+				os.Exit(1)
+			}
+			log.Info("protoc complete !")
 		}
-		log.Info("protoc complete !")
-	}
+	}()
 
 	// gen implement
-	implementFile, err := createFile(filepath.Join(gofile.GenInterPath, "implement.go"))
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	gofile.GenImplFile(implementFile)
+	swg.Add(1)
+	go func() {
+		defer swg.Done()
+
+		implementFile, err := createFile(filepath.Join(gofile.GenInterPath, "implement.go"))
+		if err != nil {
+			log.Error(err)
+			log.Flush()
+			os.Exit(1)
+		}
+		gofile.GenImplFile(implementFile)
+	}()
 
 	// gen func
 	for _, Interface := range gofile.Interfaces {
 		for _, Func := range Interface.Funcs {
-			if !*update && isexit(filepath.Join(gofile.GenInterPath, fmt.Sprintf("%s.go", Func.Name))) {
-				continue
-			}
-			log.Info("create file: " + Func.Name)
-			kitfile, err := createFile(filepath.Join(gofile.GenInterPath, fmt.Sprintf("%s.go", Func.Name)))
-			if err != nil {
-				log.Error(err)
-				return
-			}
-			gofile.GenKitFile(&Interface, &Func, kitfile)
+			swg.Add(1)
+			go func(i parse.Interface, f parse.Func) {
+				defer swg.Done()
+
+				if !*update && isexit(filepath.Join(gofile.GenInterPath, fmt.Sprintf("%s.go", f.Name))) {
+					return
+				}
+				kitfile, err := createFile(filepath.Join(gofile.GenInterPath, fmt.Sprintf("%s.go", f.Name)))
+				if err != nil {
+					log.Error(err)
+					log.Flush()
+					os.Exit(1)
+				}
+				gofile.GenKitFile(&i, &f, kitfile)
+			}(Interface, Func)
 		}
 	}
 
+	swg.Wait()
 	log.Info("complete!")
 }
 

@@ -75,9 +75,9 @@ type Interface struct {
 }
 
 type Struct struct {
-	Name   string
-	Fields []Field
-	Pkg    string // go类型定义的所在包
+	Name    string
+	Fields  []Field
+	Package string // go类型定义的所在包
 }
 
 type Func struct {
