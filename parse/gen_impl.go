@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"path"
+	"path/filepath"
 	"strings"
 
 	log "github.com/cihub/seelog"
 )
 
-const ImplTemplate = `package controllers
+const ImplTemplate = `package {{package}}
 
 import (
 	{{genimports}}
@@ -32,23 +32,26 @@ func init() {   {{range $interfaceIndex, $interface := .Interfaces}}
 {{end}}
 `
 
-func (file *File) GenImplFile(Package *Package, wr io.Writer) {
+func (file *File) GenImplFile(wr io.Writer) {
 	log.Info("generating implement files ...")
 	temp := template.New("implement.go")
 	temp.Funcs(template.FuncMap{
-		"genimports": func() template.HTML {
-			imports := strings.Builder{}
-			imports.WriteString(fmt.Sprintf(`%s "%s"`, path.Base(path.Dir(file.GenPath)), path.Dir(file.GenPath)))
-			return template.HTML(imports.String())
+		"package": func() string {
+			return filepath.Base(file.GenInterPath)
 		},
 		"service": func(Interface Interface) string {
-			return strings.ToLower(strings.Replace(Interface.Name, "Service", "", 1))
+			return strings.ToLower(strings.TrimRight(Interface.Name, "Service"))
+		},
+		"response": func(Interface Interface) string {
+			return fmt.Sprintf("%s.%s", filepath.Base(file.PackagePath), Interface.Name)
+		},
+		"genimports": func() template.HTML {
+			imports := strings.Builder{}
+			imports.WriteString(fmt.Sprintf(`"%s"`, strings.ReplaceAll(file.PackagePath, `\`, `/`)))
+			return template.HTML(imports.String())
 		},
 		"interfaceName": func(Interface Interface) string {
 			return Interface.Name
-		},
-		"response": func(Interface Interface) string {
-			return fmt.Sprintf("%s.%s", path.Base(path.Dir(file.GenPath)), Interface.Name)
 		},
 	})
 	implTemplate, err := temp.Parse(ImplTemplate)

@@ -23,6 +23,19 @@ var (
 		"error":       "google.protobuf.Value",
 		"interface{}": "google.protobuf.Value",
 	}
+	golangType2JsonType = map[string]string{
+		"byte":    "Number",
+		"int":     "Number",
+		"int32":   "Numner",
+		"int64":   "Number",
+		"uint":    "Number",
+		"uint32":  "Numner",
+		"uint64":  "Number",
+		"float32": "Number",
+		"float64": "Number",
+		"string":  "String",
+		"bool":    "Boolean",
+	}
 	golangBaseType = map[string]struct{}{
 		"byte":    {},
 		"bool":    {},
@@ -39,80 +52,53 @@ var (
 		"error":       {},
 		"interface{}": {},
 	}
-	protoType2RPCType = map[string]string{
-		"bool":   "bool",
-		"bytes":  "[]byte",
-		"string": "string",
-		"sint64": "int64",
-		"uint64": "uint64",
-		"double": "float64",
-		// "google.protobuf.Value":  "*_struct.Value",
-		// "google.protobuf.Struct": "*_struct.Struct",
-	}
 )
 
 type Package struct {
 	Name         string
 	Path         string
-	PkgPath      string
+	PackagePath  string
 	Files        []File
 	MessageTypes map[string][]string
 	root         *Package
 }
 
 type Message struct {
-	Name     string //struct名字
-	ExprName string //调用名 （pager.PagerListResp）
+	Name     string // struct名字
+	ExprName string // 调用名 （pager.PagerListResp）
 	FullName string // 全名 （带包名）
 }
 
 type Interface struct {
-	Funcs  []Func
-	Name   string
-	IsFunc bool
+	Funcs []Func
+	Name  string
 }
 
 type Struct struct {
-	Name        string
-	Fields      []Field
-	Pkg         string // go类型定义的所在包
-	IsRecursion bool   // 递归应用类型
+	Name   string
+	Fields []Field
+	Pkg    string // go类型定义的所在包
 }
 
-type InterfaceImpl struct {
-	Methods []Method
-	Name    string
-}
-
-// Method represents a method signature.
-type Method struct {
-	Recv string
-	Func
-}
-
-// Func represents a function signature.
 type Func struct {
 	Name    string
 	Params  []Field
 	Results []Field
 }
 
-// Field represents a parameter in a function or method signature.
 type Field struct {
-	Name         string // 字段名 原参数名或返回值名或struct中的字段名
-	FieldName    string // 原参数名或返回值名的可导出形式
-	GoType       string // 正常go类型
-	ProtoType    string // proto类型
-	GoExpr       string // go类型的引用前缀
-	Package      string // go类型定义的所在包
-	Variable     string // 被赋值变量
-	VariableType string // 变量类型
-	VariableCall string // 变量调用名
+	Name      string // 字段名 原参数名或返回值名或struct中的字段名
+	GoType    string // go类型
+	JsonType  string // json 类型
+	ProtoType string // proto类型
+	Comment   string // 注释
+	GoExpr    string // go类型的引用前缀
+	Package   string // go类型定义的所在包
 }
 
 func (root *Package) ParseStruct(message []Message, astFile *ast.File) *File {
 	file := File{}
-	file.PkgPath = root.PkgPath
+	file.PackagePath = root.PackagePath
 
 	file.ParseImport(astFile)
 
@@ -142,7 +128,7 @@ func (root *Package) ParseStruct(message []Message, astFile *ast.File) *File {
 				root.root.MessageTypes = make(map[string][]string, 0)
 				isContainsB = false
 			} else {
-				messageType, ok := root.root.MessageTypes[root.PkgPath]
+				messageType, ok := root.root.MessageTypes[root.PackagePath]
 				if ok {
 					for _, v := range messageType {
 						if v == spec.Name.Name {
@@ -150,14 +136,14 @@ func (root *Package) ParseStruct(message []Message, astFile *ast.File) *File {
 						}
 					}
 				} else {
-					root.root.MessageTypes[root.PkgPath] = make([]string, 0)
+					root.root.MessageTypes[root.PackagePath] = make([]string, 0)
 				}
 			}
 			if isContainsA && !isContainsB {
 				s := file.ParseStruct(spec.Name.Name, structType)
 				log.Info("find struct: ", spec.Name.Name)
 				structs = append(structs, s)
-				root.root.MessageTypes[root.PkgPath] = append(root.root.MessageTypes[root.PkgPath], spec.Name.Name)
+				root.root.MessageTypes[root.PackagePath] = append(root.root.MessageTypes[root.PackagePath], spec.Name.Name)
 			}
 		default:
 			return true

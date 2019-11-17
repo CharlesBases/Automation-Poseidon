@@ -11,23 +11,16 @@ import (
 
 type File struct {
 	Name          string
-	Package       string
-	PkgPath       string
-	GenPath       string
+	PackagePath   string
+	ProtoPackage  string
+	GenProtoPath  string
+	GenInterPath  string
 	Structs       []Struct
 	Interfaces    []Interface
 	ImportA       map[string]string
 	ImportB       map[string]string
 	Message       map[string]string
 	StructMessage map[string][]Message
-}
-
-func NewFile(pkgname string, pkgpath string, genPath string) File {
-	return File{
-		Package: pkgname,
-		PkgPath: pkgpath,
-		GenPath: genPath,
-	}
 }
 
 func (file *File) ParsePkgStruct(root *Package) {
@@ -46,14 +39,14 @@ func (file *File) ParsePkgStruct(root *Package) {
 		}
 		astFiles := program.Package(key).Files
 		Root := Package{root: root}
-		Root.PkgPath = key
+		Root.PackagePath = key
 		Root.Files = make([]File, 0, len(astFiles))
 		for _, astFile := range astFiles {
 			structFile := Root.ParseStruct(value, astFile)
 			if structFile == nil {
 				continue
 			}
-			structFile.PkgPath = Root.PkgPath
+			structFile.PackagePath = Root.PackagePath
 			structFile.ParsePkgStruct(root)
 			Root.Files = append(Root.Files, *structFile)
 		}
@@ -91,15 +84,6 @@ func (file *File) ParsePkgStruct(root *Package) {
 			}
 		}
 	}
-
-	for structKey, structValue := range file.Structs {
-		for _, fieldValue := range structValue.Fields {
-			goType := strings.Replace(strings.Replace(fieldValue.GoType, "[]", "", 1), "*", "", -1)
-			if structValue.Name == goType {
-				file.Structs[structKey].IsRecursion = true
-			}
-		}
-	}
 }
 
 func (file *File) ParseStructs() {
@@ -131,7 +115,7 @@ func (file *File) ParseStructMessage() {
 		} else {
 			_, ok := golangBaseType[val]
 			if !ok {
-				pkgpath := file.PkgPath
+				pkgpath := file.PackagePath
 				if structMessage[pkgpath] == nil {
 					structMessage[pkgpath] = make([]Message, 0)
 				}

@@ -17,12 +17,15 @@ import (
 )
 
 var (
-	sourceFile   = flag.String("file", "", "full path of the file")
-	generatePath = flag.String("path", "./pb/", "full path of the generate folder")
-	protoPackage = flag.String("package", "", "package name in .proto file")
-	update       = flag.Bool("update", false, "update existing interface or not")
-	genProto     = flag.Bool("proto", false, "generate proto file or not")
+	sourceFile        = flag.String("file", ".", "full path of the interface file")
+	generateProtoPath = flag.String("protoP", "./pb/", "full path of the generate rpc folder")
+	generateInterPath = flag.String("interP", "../controllers/", "full path of the generate interface folder")
+	protoPackage      = flag.String("package", "pb", "package name in .proto file")
+	generateProto     = flag.Bool("proto", false, "generate proto file or not")
+	update            = flag.Bool("update", true, "update existing interface or not")
 )
+
+var src string // $GOPATH/src
 
 var (
 	proFile       = "proto"
@@ -53,11 +56,10 @@ func main() {
 	defer log.Flush()
 	flag.Parse()
 
-	if *protoPackage == "" {
-		*protoPackage = filepath.Base(*generatePath)
-	}
+	// swg := sync.WaitGroup{}
+	// swg.Add(4)
 
-	proFile = path.Join(*generatePath, fmt.Sprintf("%s.%s", *protoPackage, proFile))
+	proFile = path.Join(*generateProtoPath, fmt.Sprintf("%s.%s", *protoPackage, proFile))
 
 	log.Info("parsing files for go: ", *sourceFile)
 
@@ -66,37 +68,57 @@ func main() {
 		log.Error(err)
 		return
 	}
-	gofile := parse.NewFile(func() (string, string, string) {
-		slice := make([]string, 3)
-		slice[0] = *protoPackage
-		genPath, _ := filepath.Abs(*generatePath)
-		pkgPath := filepath.Dir(*sourceFile)
-		absPath, _ := filepath.Abs(".")
+
+	gofile := new(parse.File)
+	// go func() {
+	// 	defer swg.Done()
+
+	src = func() string {
 		list := filepath.SplitList(os.Getenv("GOPATH"))
-		for _, val := range list {
-			if strings.Contains(pkgPath, fmt.Sprintf("%s%s", val, "/src/")) {
-				slice[1] = pkgPath[len(val)+5:]
-			}
-			if strings.Contains(absPath, fmt.Sprintf("%s%s", val, "/src/")) {
-				slice[1] = absPath[len(val)+5:]
-			}
-			if strings.Contains(genPath, fmt.Sprintf("%s%s", val, "/src/")) {
-				slice[2] = genPath[len(val)+5:]
-			}
+		for _, gopath := range list {
+			return filepath.Join(gopath, "src")
 		}
-		return slice[0], slice[1], slice[2]
-	}())
+		return "src"
+	}()
+
+	*gofile = parse.File{
+		Name:         filepath.Base(*sourceFile),
+		PackagePath:  strings.TrimPrefix(filepath.Dir(*sourceFile), src)[1:],
+		ProtoPackage: *protoPackage,
+		GenProtoPath: func() string {
+			abspath, err := filepath.Abs(*generateProtoPath)
+			if err != nil {
+				log.Error("parse generate proto path error: ", err)
+				os.Exit(1)
+			}
+			if *generateProto {
+				os.MkdirAll(abspath, 0755)
+			}
+			return strings.TrimPrefix(abspath, src)[1:]
+		}(),
+		GenInterPath: func() string {
+			abspath, err := filepath.Abs(*generateInterPath)
+			if err != nil {
+				log.Error("parse generate interface path error: ", err)
+				os.Exit(1)
+			}
+			os.MkdirAll(abspath, 0755)
+			return strings.TrimPrefix(abspath, src)[1:]
+		}(),
+	}
+	// }()
+
 	gofile.ParseFile(astFile)
 	if len(gofile.Interfaces) == 0 {
+		log.Error("no interface found")
 		return
 	}
-	gofile.ParsePkgStruct(&parse.Package{PkgPath: gofile.PkgPath})
+	// 解析源文件包下结构体
+	gofile.ParsePkgStruct(&parse.Package{PackagePath: gofile.PackagePath})
 
 	gofile.GoTypeConfig()
 
-	if *genProto {
-		os.MkdirAll(*generatePath, 0755)
-
+	if *generateProto {
 		// generate proto file
 		profile, err := createFile(proFile)
 		if err != nil {
@@ -118,18 +140,12 @@ func main() {
 	}
 
 	// gen implement
-	controllerPkg = path.Join("../", controllerPkg)
-	os.MkdirAll(controllerPkg, 0755)
-
-	implementFile, err := createKitFile(path.Join(controllerPkg, "implement.go"))
+	implementFile, err := createFile(filepath.Join(gofile.GenInterPath, "implement.go"))
 	if err != nil {
 		log.Error(err)
 		return
 	}
-	gofile.GenImplFile(&parse.Package{
-		Name: "controllers",
-		Path: path.Dir(gofile.GenPath),
-	}, implementFile)
+	gofile.GenImplFile(implementFile)
 
 	// gen func
 	for _, Interface := range gofile.Interfaces {
@@ -158,8 +174,9 @@ func isexit(filename string) bool {
 }
 
 func createFile(fileName string) (*os.File, error) {
-	os.RemoveAll(fileName)
 	log.Info("create file: " + fileName)
+	fileName = filepath.Join(src, fileName)
+	os.RemoveAll(fileName)
 	return os.Create(fileName)
 }
 
