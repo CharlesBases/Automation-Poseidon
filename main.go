@@ -22,15 +22,10 @@ var (
 	generateInterPath = flag.String("interP", "../controllers/", "full path of the generate interface folder")
 	protoPackage      = flag.String("package", "pb", "package name in .proto file")
 	generateProto     = flag.Bool("proto", false, "generate proto file or not")
-	update            = flag.Bool("update", true, "update existing interface or not")
+	update            = flag.Bool("update", false, "update existing interface or not")
 )
 
 var src string // $GOPATH/src
-
-var (
-	proFile       = "proto"
-	controllerPkg = "controllers"
-)
 
 func init() {
 	logger, _ := log.LoggerFromConfigAsString(`
@@ -59,8 +54,9 @@ func main() {
 	// swg := sync.WaitGroup{}
 	// swg.Add(4)
 
-	proFile = path.Join(*generateProtoPath, fmt.Sprintf("%s.%s", *protoPackage, proFile))
+	protofile := path.Join(*generateProtoPath, fmt.Sprintf("%s.proto", *protoPackage))
 
+	*sourceFile, _ = filepath.Abs(*sourceFile)
 	log.Info("parsing files for go: ", *sourceFile)
 
 	astFile, err := parser.ParseFile(token.NewFileSet(), *sourceFile, nil, 0) // 获取文件信息
@@ -120,7 +116,7 @@ func main() {
 
 	if *generateProto {
 		// generate proto file
-		profile, err := createFile(proFile)
+		profile, err := createFile(protofile)
 		if err != nil {
 			log.Error(err)
 			return
@@ -130,8 +126,8 @@ func main() {
 
 		// run protoc
 		log.Info("run the protoc command ...")
-		dir := filepath.Dir(proFile)
-		out, err := exec.Command("protoc", "--proto_path="+dir+"/", "--gogofaster_out=plugins=grpc:"+dir+"/", proFile).CombinedOutput()
+		dir := filepath.Dir(protofile)
+		out, err := exec.Command("protoc", "--proto_path="+dir+"/", "--gogofaster_out=plugins=grpc:"+dir+"/", protofile).CombinedOutput()
 		if err != nil {
 			log.Error("protoc error: ", string(out))
 			return
@@ -150,11 +146,11 @@ func main() {
 	// gen func
 	for _, Interface := range gofile.Interfaces {
 		for _, Func := range Interface.Funcs {
-			if !*update && isexit(path.Join(controllerPkg, fmt.Sprintf("%s.go", Func.Name))) {
+			if !*update && isexit(filepath.Join(gofile.GenInterPath, fmt.Sprintf("%s.go", Func.Name))) {
 				continue
 			}
 			log.Info("create file: " + Func.Name)
-			kitfile, err := createKitFile(path.Join(controllerPkg, fmt.Sprintf("%s.go", Func.Name)))
+			kitfile, err := createFile(filepath.Join(gofile.GenInterPath, fmt.Sprintf("%s.go", Func.Name)))
 			if err != nil {
 				log.Error(err)
 				return
@@ -178,9 +174,4 @@ func createFile(fileName string) (*os.File, error) {
 	fileName = filepath.Join(src, fileName)
 	os.RemoveAll(fileName)
 	return os.Create(fileName)
-}
-
-func createKitFile(filepath string) (*os.File, error) {
-	os.RemoveAll(filepath)
-	return os.Create(filepath)
 }
