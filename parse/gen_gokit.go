@@ -108,7 +108,7 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 			return path.Base(path.Dir(file.GenProtoPath))
 		},
 		"service": func() string {
-			return strings.ToLower(strings.TrimRight(Interface.Name, "Service"))
+			return strings.ToLower(strings.ReplaceAll(Interface.Name, "Service", ""))
 		},
 		"genimports": func() template.HTML {
 			imports := strings.Builder{}

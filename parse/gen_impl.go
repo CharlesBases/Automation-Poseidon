@@ -40,7 +40,7 @@ func (file *File) GenImplFile(wr io.Writer) {
 			return filepath.Base(file.GenInterPath)
 		},
 		"service": func(Interface Interface) string {
-			return strings.ToLower(strings.TrimRight(Interface.Name, "Service"))
+			return strings.ToLower(strings.ReplaceAll(Interface.Name, "Service", ""))
 		},
 		"response": func(Interface Interface) string {
 			return fmt.Sprintf("%s.%s", filepath.Base(file.PackagePath), Interface.Name)
