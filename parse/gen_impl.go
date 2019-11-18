@@ -40,14 +40,20 @@ func (file *File) GenImplFile(wr io.Writer) {
 			return filepath.Base(file.GenInterPath)
 		},
 		"service": func(Interface Interface) string {
-			return strings.ToLower(strings.ReplaceAll(Interface.Name, "Service", ""))
+			return strings.ToLower(strings.TrimRight(Interface.Name, "Service"))
 		},
 		"response": func(Interface Interface) string {
 			return fmt.Sprintf("%s.%s", filepath.Base(file.PackagePath), Interface.Name)
 		},
 		"genimports": func() template.HTML {
 			imports := strings.Builder{}
-			imports.WriteString(fmt.Sprintf(`"%s"`, strings.ReplaceAll(file.PackagePath, `\`, `/`)))
+			imports.WriteString(fmt.Sprintf(`"%s"`, strings.ReplaceAll(func() string {
+				if file.ProjectPath != "" {
+					return fmt.Sprintf("%s/%s", file.ProjectPath, filepath.Base(file.PackagePath))
+				} else {
+					return file.PackagePath
+				}
+			}(), `\`, `/`)))
 			return template.HTML(imports.String())
 		},
 		"interfaceName": func(Interface Interface) string {

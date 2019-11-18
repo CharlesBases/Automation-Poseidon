@@ -20,6 +20,7 @@ import (
 
 var (
 	sourceFile        = flag.String("file", ".", "full path of the interface file")
+	projectPath       = flag.String("project", "", "module path")
 	generateProtoPath = flag.String("protoP", "./pb/", "full path of the generate rpc folder")
 	generateInterPath = flag.String("interP", "../controllers/", "full path of the generate interface folder")
 	protoPackage      = flag.String("package", "pb", "package name in .proto file")
@@ -82,8 +83,14 @@ func main() {
 		}()
 
 		*gofile = parse.File{
-			Name:         filepath.Base(*sourceFile),
-			PackagePath:  strings.TrimPrefix(filepath.Dir(*sourceFile), src)[1:],
+			Name:        filepath.Base(*sourceFile),
+			PackagePath: strings.TrimPrefix(filepath.Dir(*sourceFile), src)[1:],
+			ProjectPath: func() string {
+				if *projectPath != "" {
+					return fmt.Sprintf("ifchange/%s", *projectPath)
+				}
+				return ""
+			}(),
 			ProtoPackage: *protoPackage,
 			GenProtoPath: func() string {
 				abspath, err := filepath.Abs(*generateProtoPath)

@@ -12,6 +12,7 @@ import (
 type File struct {
 	Name          string
 	PackagePath   string
+	ProjectPath   string
 	ProtoPackage  string
 	GenProtoPath  string
 	GenInterPath  string

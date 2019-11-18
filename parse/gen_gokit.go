@@ -68,6 +68,7 @@ func (*{{service}}) {{.Name}}({{requestParse}}) ({{responseParse}}) {
 	}()
 	// validator
 	if err := validator.New().Struct(request); err != nil {
+		log.Error("json validator error: ", err)
 		Error.WebError(web.ParamsErr)
 		return
 	}
@@ -114,7 +115,13 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 		"genimports": func() template.HTML {
 			imports := strings.Builder{}
 			imports.WriteString("\n\t")
-			imports.WriteString(fmt.Sprintf(`"%s"`, strings.ReplaceAll(file.PackagePath, `\`, `/`)))
+			imports.WriteString(fmt.Sprintf(`"%s"`, strings.ReplaceAll(func() string {
+				if file.ProjectPath != "" {
+					return fmt.Sprintf("%s/%s", file.ProjectPath, filepath.Base(file.PackagePath))
+				} else {
+					return file.PackagePath
+				}
+			}(), `\`, `/`)))
 			for k, v := range file.ImportA {
 				imports.WriteString("\n\t")
 				imports.WriteString(fmt.Sprintf(`%s "%s"`, k, v))
@@ -137,7 +144,7 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 			if len(Func.Params) != 0 {
 				request.WriteString(fmt.Sprintf(`request := new(%s)
 	if err := json.NewDecoder(r.Body).Decode(request); err != nil {
-		return nil, err
+		log.Error("decode request error: ", err)
 	}
 	return request, nil`,
 					func() string {
