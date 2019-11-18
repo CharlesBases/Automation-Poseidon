@@ -276,10 +276,13 @@ func (file *File) parseResponseParams(fields []Field) string {
 // AaaBbb to aaa_bbb
 func ensnake(source string) string {
 	builder := strings.Builder{}
-	for key, word := range []rune(source) {
+	ascll := []rune(source)
+	for key, word := range ascll {
 		if word <= 90 {
 			if key != 0 {
-				builder.WriteString("_")
+				if word != 68 || ascll[key-1] != 73 {
+					builder.WriteString("_")
+				}
 			}
 			builder.WriteString(strings.ToLower(string(word)))
 		} else {
