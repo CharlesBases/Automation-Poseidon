@@ -66,6 +66,7 @@ func (*{{service}}) {{.Name}}({{requestParse}}) ({{responseParse}}) {
 			}
 		}
 	}()
+	// validator
 	if err := validator.New().Struct(request); err != nil {
 		Error.WebError(web.ParamsErr)
 		return
