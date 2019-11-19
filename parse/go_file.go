@@ -10,12 +10,13 @@ import (
 )
 
 type File struct {
-	Name          string
-	PackagePath   string
-	ProjectPath   string
-	ProtoPackage  string
-	GenProtoPath  string
-	GenInterPath  string
+	Name          string // 文件名
+	PackagePath   string // 文件包路径
+	ProjectPath   string // 项目路径 go.mod.module
+	ProtoPackage  string // 生成 proto 文件 package 名
+	GenProtoPath  string // 生成 proto 文件路径
+	GenInterPath  string // 生成 controllers 路径
+	GenLogicPath  string // 逻辑层包路径 Func 首单词分组
 	Structs       []Struct
 	Interfaces    []Interface
 	ImportA       map[string]string

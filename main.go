@@ -23,6 +23,7 @@ var (
 	projectPath       = flag.String("project", "", "module path")
 	generateProtoPath = flag.String("protoP", "./pb/", "full path of the generate rpc folder")
 	generateInterPath = flag.String("interP", "../controllers/", "full path of the generate interface folder")
+	generateLogicPath = flag.String("logicP", "../logics/", "full path of the generate logics folder")
 	protoPackage      = flag.String("package", "pb", "package name in .proto file")
 	generateProto     = flag.Bool("proto", false, "generate proto file or not")
 	update            = flag.Bool("update", false, "update existing interface or not")
@@ -96,6 +97,7 @@ func main() {
 				abspath, err := filepath.Abs(*generateProtoPath)
 				if err != nil {
 					log.Error("parse generate proto path error: ", err)
+					log.Flush()
 					os.Exit(1)
 				}
 				if *generateProto {
@@ -107,6 +109,17 @@ func main() {
 				abspath, err := filepath.Abs(*generateInterPath)
 				if err != nil {
 					log.Error("parse generate interface path error: ", err)
+					log.Flush()
+					os.Exit(1)
+				}
+				os.MkdirAll(abspath, 0755)
+				return strings.TrimPrefix(abspath, src)[1:]
+			}(),
+			GenLogicPath: func() string {
+				abspath, err := filepath.Abs(*generateLogicPath)
+				if err != nil {
+					log.Error("parse generate logic path error: ", err)
+					log.Flush()
 					os.Exit(1)
 				}
 				os.MkdirAll(abspath, 0755)
@@ -176,7 +189,31 @@ func main() {
 	// gen func
 	for _, Interface := range gofile.Interfaces {
 		for _, Func := range Interface.Funcs {
-			swg.Add(1)
+			swg.Add(2)
+
+			// logic
+			go func(f parse.Func) {
+				defer swg.Done()
+
+				grouppath := filepath.Join(gofile.GenLogicPath, strings.ToLower(Func.Group))
+
+				os.MkdirAll(filepath.Join(src, grouppath), 0755)
+
+				if isexit(filepath.Join(grouppath, fmt.Sprintf("%s.go", f.Group))) {
+					return
+				}
+
+				logicfile, err := createFile(filepath.Join(grouppath, fmt.Sprintf("%s.go", f.Group)))
+				if err != nil {
+					log.Error(err)
+					log.Flush()
+					os.Exit(1)
+				}
+				gofile.GenLogicFile(&f, logicfile)
+
+			}(Func)
+
+			// controllers
 			go func(i parse.Interface, f parse.Func) {
 				defer swg.Done()
 

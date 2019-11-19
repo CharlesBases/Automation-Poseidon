@@ -211,7 +211,7 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 					if len(Func.Params) != 0 {
 						params.WriteString("request, ")
 					}
-					params.WriteString("response")
+					params.WriteString("results, Error")
 					return params.String()
 				}(),
 			))
