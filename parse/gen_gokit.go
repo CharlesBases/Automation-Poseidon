@@ -31,7 +31,7 @@ import (
 /*
 @api {post} url title
 @apiVersion 1.0.0
-@apiGroup {{parsegroup}}
+@apiGroup {{.Group}}
 @apiDescription 描述
 
 @apiParam {Object} p 请求参数
@@ -199,16 +199,6 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 				break
 			}
 			return "var results interface{}"
-		},
-		"parsegroup": func() string {
-			group := strings.Builder{}
-			for i, x := range []rune(Func.Name) {
-				if i != 0 && x < 91 && x > 64 {
-					break
-				}
-				group.WriteString(string(x))
-			}
-			return group.String()
 		},
 		"parseRequestParams":  file.parseRequestParams,
 		"parseResponseParams": file.parseResponseParams,

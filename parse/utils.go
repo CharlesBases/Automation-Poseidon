@@ -82,6 +82,7 @@ type Struct struct {
 
 type Func struct {
 	Name    string
+	Group   string
 	Params  []Field
 	Results []Field
 }

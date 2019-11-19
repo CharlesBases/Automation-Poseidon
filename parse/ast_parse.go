@@ -102,6 +102,16 @@ func (file *File) ParseStruct(name string, structType *ast.StructType) Struct {
 func (file *File) ParseFunc(name string, funcType *ast.FuncType) Func {
 	fun := Func{
 		Name: name,
+		Group: func() string {
+			group := strings.Builder{}
+			for i, x := range []rune(name) {
+				if i != 0 && x < 91 && x > 64 {
+					break
+				}
+				group.WriteString(string(x))
+			}
+			return group.String()
+		}(),
 	}
 
 	if funcType.Params != nil {
