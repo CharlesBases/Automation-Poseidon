@@ -191,7 +191,7 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 					if response.ProtoType == Struct.Name {
 						for _, field := range Struct.Fields {
 							if strings.HasPrefix(field.GoType, "*") {
-								return fmt.Sprintf("results := new(%s.%s)", filepath.Base(field.Package), strings.TrimPrefix(field.GoType, "*"))
+								return fmt.Sprintf("results := new(%s.%s)", filepath.Base(field.Package), field.ProtoType)
 							}
 						}
 					}
