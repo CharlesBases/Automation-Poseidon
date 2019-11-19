@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"gitlab.ifchange.com/bot/gokitcommon/log"
 	"gitlab.ifchange.com/bot/gokitcommon/web"
 	"gopkg.in/go-playground/validator.v9"
 
@@ -139,7 +140,7 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 			}
 			return request.String()
 		},
-		"requestDecode": func() string {
+		"requestDecode": func() template.HTML {
 			request := strings.Builder{}
 			if len(Func.Params) != 0 {
 				request.WriteString(fmt.Sprintf(`request := new(%s)
@@ -158,7 +159,7 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 			} else {
 				request.WriteString("return nil, nil")
 			}
-			return request.String()
+			return template.HTML(request.String())
 		},
 		"requestCoercive": func() string {
 			request := strings.Builder{}
