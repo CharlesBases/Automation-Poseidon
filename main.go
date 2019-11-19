@@ -195,15 +195,15 @@ func main() {
 			go func(f parse.Func) {
 				defer swg.Done()
 
-				grouppath := filepath.Join(gofile.GenLogicPath, strings.ToLower(Func.Group))
+				grouppath := filepath.Join(gofile.GenLogicPath, strings.ToLower(f.Group))
 
 				os.MkdirAll(filepath.Join(src, grouppath), 0755)
 
-				if isexit(filepath.Join(grouppath, fmt.Sprintf("%s.go", f.Group))) {
+				if isexit(filepath.Join(grouppath, fmt.Sprintf("%s.go", strings.ToLower(f.Group)))) {
 					return
 				}
 
-				logicfile, err := createFile(filepath.Join(grouppath, fmt.Sprintf("%s.go", f.Group)))
+				logicfile, err := createFile(filepath.Join(grouppath, fmt.Sprintf("%s.go", strings.ToLower(f.Group))))
 				if err != nil {
 					log.Error(err)
 					log.Flush()

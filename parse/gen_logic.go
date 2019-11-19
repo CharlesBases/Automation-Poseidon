@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"io"
 	"path/filepath"
+	"strings"
 
 	log "github.com/cihub/seelog"
 )
@@ -19,7 +20,7 @@ func (file *File) GenLogicFile(Func *Func, wr io.Writer) {
 	temp := template.New(fmt.Sprintf("%s.go", Func.Group))
 	temp.Funcs(template.FuncMap{
 		"package": func() string {
-			return filepath.Base(file.GenLogicPath)
+			return filepath.Base(strings.ToLower(Func.Group))
 		},
 	})
 	logicTemplate, err := temp.Parse(LogicTemplate)
