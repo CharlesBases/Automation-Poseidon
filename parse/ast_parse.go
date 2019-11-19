@@ -247,7 +247,7 @@ func parseJsonType(fieldType string) string {
 	fieldType = strings.TrimPrefix(fieldType, "*")
 	if strings.HasPrefix(fieldType, "[]") {
 		fieldType = strings.TrimPrefix(fieldType, "[]")
-		jsonType.WriteString("Array ")
+		jsonType.WriteString("[]")
 	}
 	if val, ok := golangType2JsonType[fieldType]; ok {
 		jsonType.WriteString(val)
