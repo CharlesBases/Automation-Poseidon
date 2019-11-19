@@ -202,7 +202,7 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 		},
 		"business": func() template.HTML {
 			business := strings.Builder{}
-			business.WriteString(fmt.Sprintf("result, Error = new(%s.%s).%s(%s)",
+			business.WriteString(fmt.Sprintf("results, Error = new(%s.%s).%s(%s)",
 				strings.ToLower(Func.Group),
 				Func.Group,
 				Func.Name,
