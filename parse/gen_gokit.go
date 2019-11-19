@@ -75,6 +75,7 @@ func (*{{service}}) {{.Name}}({{requestParse}}) ({{responseParse}}) {
 	}
 
 	// Do something
+	{{business}}
 
 	return 
 }
@@ -115,14 +116,13 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 		},
 		"genimports": func() template.HTML {
 			imports := strings.Builder{}
+
 			imports.WriteString("\n\t")
-			imports.WriteString(fmt.Sprintf(`"%s"`, strings.ReplaceAll(func() string {
-				if file.ProjectPath != "" {
-					return fmt.Sprintf("%s/%s", file.ProjectPath, filepath.Base(file.PackagePath))
-				} else {
-					return file.PackagePath
-				}
-			}(), `\`, `/`)))
+			imports.WriteString(fmt.Sprintf(`"%s/logics/%s"`, file.ProjectPath, strings.ToLower(Func.Group)))
+
+			imports.WriteString("\n\n\t")
+			imports.WriteString(fmt.Sprintf(`"%s/%s"`, file.ProjectPath, filepath.Base(file.PackagePath)))
+
 			for k, v := range file.ImportA {
 				imports.WriteString("\n\t")
 				imports.WriteString(fmt.Sprintf(`%s "%s"`, k, v))
@@ -199,6 +199,23 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 				break
 			}
 			return "var results interface{}"
+		},
+		"business": func() template.HTML {
+			business := strings.Builder{}
+			business.WriteString(fmt.Sprintf("new(%s.%s).%s(%s)",
+				strings.ToLower(Func.Group),
+				Func.Group,
+				Func.Name,
+				func() string {
+					params := strings.Builder{}
+					if len(Func.Params) != 0 {
+						params.WriteString("request, ")
+					}
+					params.WriteString("response")
+					return params.String()
+				}(),
+			))
+			return template.HTML(business.String())
 		},
 		"parseRequestParams":  file.parseRequestParams,
 		"parseResponseParams": file.parseResponseParams,

@@ -89,7 +89,7 @@ func main() {
 				if *projectPath != "" {
 					return fmt.Sprintf("ifchange/%s", *projectPath)
 				}
-				return ""
+				return filepath.Dir(strings.TrimPrefix(filepath.Dir(*sourceFile), src)[1:])
 			}(),
 			ProtoPackage: *protoPackage,
 			GenProtoPath: func() string {
