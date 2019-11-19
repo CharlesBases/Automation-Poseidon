@@ -236,8 +236,10 @@ func main() {
 }
 
 func isexit(filename string) bool {
-	if _, err := os.Stat(filename); err == nil {
+	if _, err := os.Stat(filepath.Join(src, filename)); err == nil {
 		return true
+	} else {
+		log.Error(err)
 	}
 	return false
 }
