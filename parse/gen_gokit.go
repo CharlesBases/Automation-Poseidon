@@ -100,7 +100,7 @@ func DecodeRequest{{.Name}}(ctx context.Context, r *http.Request) (interface{}, 
 }
 
 func EncodeResponse{{.Name}}(ctx context.Context, w http.ResponseWriter, response interface{}) error {
-	return web.Encode(w, response)
+	return web.EncodeResponse(w, response)
 }
 `
 
