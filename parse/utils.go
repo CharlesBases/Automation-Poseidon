@@ -52,6 +52,12 @@ var (
 		"error":       {},
 		"interface{}": {},
 	}
+	jsonDefaultValue = map[string]interface{}{
+		"Number":  0,
+		"String":  "",
+		"Boolean": false,
+		"Object":  nil,
+	}
 )
 
 type Package struct {

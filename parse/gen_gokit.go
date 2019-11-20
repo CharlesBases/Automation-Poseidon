@@ -1,6 +1,7 @@
 package parse
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
@@ -28,7 +29,7 @@ import (
 	{{genimports}}
 )
 
-/*
+/**
 @api {post} url title
 @apiVersion 1.0.0
 @apiGroup {{.Group}}
@@ -37,16 +38,13 @@ import (
 @apiParam {Object} p 请求参数
 {{parseRequestParams .Params}}
 @apiParamExample {json} Request-Example:
-{
-
-}
+{{decodeJson .Params}}
 
 @apiSuccess {Object} results 返回结果
 {{parseResponseParams .Results}}
 @apiSuccessExample {json} Response-Example:
-{
+{{decodeJson .Results}}
 
-}
 */
 func (*{{service}}) {{.Name}}({{requestParse}}) ({{responseParse}}) {
 	// response.Results
@@ -216,6 +214,7 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 			))
 			return template.HTML(business.String())
 		},
+		"decodeJson":          file.decodeJson,
 		"parseRequestParams":  file.parseRequestParams,
 		"parseResponseParams": file.parseResponseParams,
 	})
@@ -286,6 +285,59 @@ func (file *File) parseResponseParams(fields []Field) string {
 	}
 
 	return doc.String()
+}
+
+func (file *File) decodeJson(fields []Field) template.HTML {
+	jsonDatas := file.jsonDemo(fields)
+	datas, _ := json.MarshalIndent(jsonDatas, "", "\t")
+	return template.HTML(string(datas))
+}
+
+func (file *File) jsonDemo(fields []Field) interface{} {
+	jsonData := make(map[string]interface{}, 0)
+	ParamStrust := new(Struct)
+
+	for _, requestParam := range fields {
+		for _, Struct := range file.Structs {
+			if requestParam.ProtoType == Struct.Name {
+				ParamStrust = &Struct
+				break
+			}
+		}
+		break
+	}
+
+	for _, field := range ParamStrust.Fields {
+		jsonData[ensnake(field.Name)] = file.parseFieldValue(field)
+	}
+
+	return jsonData
+}
+
+func (file *File) parseFieldValue(field Field) interface{} {
+	switch strings.HasPrefix(field.ProtoType, "repeated ") {
+	case false:
+		if field.Package != "" {
+			return file.jsonDemo([]Field{field})
+		}
+		return jsonDefaultValue[field.JsonType]
+	case true:
+		field.ProtoType = strings.ReplaceAll(field.ProtoType, "repeated ", "")
+
+		if field.Package != "" {
+			data := make([]map[string]interface{}, 2)
+			data[0] = map[string]interface{}{ensnake(field.Name): file.jsonDemo([]Field{field})}
+			data[1] = map[string]interface{}{}
+			return data
+		} else {
+			data := make([]interface{}, 2)
+			data[0] = jsonDefaultValue[strings.ReplaceAll(field.JsonType, "[]", "")]
+			data[1] = data[0]
+			return data
+		}
+
+	}
+	return nil
 }
 
 // AaaBbb to aaa_bbb
