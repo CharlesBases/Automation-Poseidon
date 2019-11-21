@@ -48,10 +48,12 @@ import (
 */
 func (*{{service}}) {{.Name}}({{requestParse}}) ({{responseParse}}) {
 	defer func() {
-		if response != nil && response.ErrNo != 0 {
+		if response.ErrNo != 0 {
 			response.Results = nil
 		}
 	}()
+	// response
+	{{responseAssignment}}
 	// validator
 	if err := validator.New().Struct(request); err != nil {
 		log.Error("json validator error: ", err)
@@ -164,8 +166,13 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 		"responseAssignment": func() template.HTML {
 			response := strings.Builder{}
 			for _, param := range Func.Results {
-				response.WriteString(strings.ReplaceAll(param.GoType, "*", "&"))
-				break
+				if strings.HasPrefix(param.GoType, "*") {
+					response.WriteString(fmt.Sprintf("response = new(%s)", strings.TrimPrefix(param.GoType, "*")))
+					break
+				} else {
+					response.WriteString(fmt.Sprintf("response = %s", param.GoType))
+					break
+				}
 			}
 			return template.HTML(response.String())
 		},
