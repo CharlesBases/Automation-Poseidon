@@ -296,8 +296,8 @@ func (file *File) parseFieldValue(field Field) interface{} {
 		field.ProtoType = strings.ReplaceAll(field.ProtoType, "repeated ", "")
 
 		if field.Package != "" {
-			data := make([]map[string]interface{}, 1)
-			data[0] = map[string]interface{}{ensnake(field.Name): file.jsonDemo([]Field{field})}
+			data := make([]interface{}, 1)
+			data[0] = file.jsonDemo([]Field{field})
 			// data[1] = map[string]interface{}{}
 			return data
 		} else {
