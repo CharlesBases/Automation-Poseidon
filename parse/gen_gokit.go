@@ -47,31 +47,17 @@ import (
 
 */
 func (*{{service}}) {{.Name}}({{requestParse}}) ({{responseParse}}) {
-	// response.Results
-	{{results}}
-	// response.Error
-	Error := new(web.Error)
 	defer func() {
-		if Error.ErrNo != 0 {
-			response = {{responseAssignment}}{
-				Error: core.Error{
-					ErrNo:  Error.ErrNo,
-					ErrMsg: Error.ErrMsg,
-				},
-			}
-		} else {
-			response = {{responseAssignment}}{
-				Results: results,
-			}
+		if response != nil && response.ErrNo != 0 {
+			response.Results = nil
 		}
 	}()
 	// validator
 	if err := validator.New().Struct(request); err != nil {
 		log.Error("json validator error: ", err)
-		Error.WebError(web.ParamsErr)
+		response.ErrNo, response.ErrMsg = web.WebError(web.ParamsErr)
 		return
 	}
-
 	// Do something
 	{{business}}
 
@@ -183,24 +169,9 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 			}
 			return template.HTML(response.String())
 		},
-		"results": func() string {
-			for _, response := range Func.Results {
-				for _, Struct := range file.Structs {
-					if response.ProtoType == Struct.Name {
-						for _, field := range Struct.Fields {
-							if strings.HasPrefix(field.GoType, "*") {
-								return fmt.Sprintf("results := new(%s.%s)", filepath.Base(field.Package), field.ProtoType)
-							}
-						}
-					}
-				}
-				break
-			}
-			return "var results interface{}"
-		},
 		"business": func() template.HTML {
 			business := strings.Builder{}
-			business.WriteString(fmt.Sprintf("results, Error = new(%s.%s).%s(%s)",
+			business.WriteString(fmt.Sprintf("response = new(%s.%s).%s(%s)",
 				strings.ToLower(Func.Group),
 				Func.Group,
 				Func.Name,
@@ -325,14 +296,14 @@ func (file *File) parseFieldValue(field Field) interface{} {
 		field.ProtoType = strings.ReplaceAll(field.ProtoType, "repeated ", "")
 
 		if field.Package != "" {
-			data := make([]map[string]interface{}, 2)
+			data := make([]map[string]interface{}, 1)
 			data[0] = map[string]interface{}{ensnake(field.Name): file.jsonDemo([]Field{field})}
-			data[1] = map[string]interface{}{}
+			// data[1] = map[string]interface{}{}
 			return data
 		} else {
-			data := make([]interface{}, 2)
+			data := make([]interface{}, 1)
 			data[0] = jsonDefaultValue[strings.ReplaceAll(field.JsonType, "[]", "")]
-			data[1] = data[0]
+			// data[1] = data[0]
 			return data
 		}
 
