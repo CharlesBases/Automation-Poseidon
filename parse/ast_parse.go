@@ -78,6 +78,7 @@ func (file *File) ParseImport(astFile *ast.File) {
 		}
 		return false
 	})
+	ImportA["context"] = "context"
 	file.ImportA = ImportA
 	file.ImportB = make(map[string]string, 0)
 	for key, val := range file.ImportA {
@@ -121,14 +122,6 @@ func (file *File) ParseFunc(name string, funcType *ast.FuncType) Func {
 		fun.Results = file.ParseField(funcType.Results.List)
 	}
 
-	for _, val := range fun.Params {
-		if val.Package == "context" || val.Package == "golang.org/x/net/context" {
-			if val.GoType == fmt.Sprintf("%s.Context", file.ImportB[val.Package]) {
-				fun.Params = fun.Params[1:]
-			}
-		}
-		break
-	}
 	return fun
 }
 

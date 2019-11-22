@@ -16,7 +16,6 @@ const KitTemplate = `// this file is generated for {{.Name}}
 package controllers
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 
@@ -120,9 +119,11 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 		},
 		"requestParse": func() string {
 			request := strings.Builder{}
-			for _, x := range Func.Params {
-				request.WriteString(fmt.Sprintf("request %s", x.GoType))
-				break
+			for i, x := range Func.Params {
+				if i != 0 {
+					request.WriteString(", ")
+				}
+				request.WriteString(fmt.Sprintf("%s %s", x.Name, x.GoType))
 			}
 			return request.String()
 		},
@@ -136,8 +137,11 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 	return request, nil`,
 					func() string {
 						requestParam := strings.Builder{}
-						for _, param := range Func.Params {
-							requestParam.WriteString(strings.TrimPrefix(param.GoType, "*"))
+						for _, x := range Func.Params {
+							if x.Package == "context" || x.Package == "golang.org/x/net/context" {
+								continue
+							}
+							requestParam.WriteString(strings.TrimPrefix(x.GoType, "*"))
 						}
 						return requestParam.String()
 					}(),
@@ -149,9 +153,15 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 		},
 		"requestCoercive": func() string {
 			request := strings.Builder{}
-			for _, x := range Func.Params {
-				request.WriteString(fmt.Sprintf("request.(%s)", x.GoType))
-				break
+			for i, x := range Func.Params {
+				if i != 0 {
+					request.WriteString(", ")
+				}
+				if x.Package == "context" || x.Package == "golang.org/x/net/context" {
+					request.WriteString(x.Name)
+				} else {
+					request.WriteString(fmt.Sprintf("request.(%s)", x.GoType))
+				}
 			}
 			return request.String()
 		},
@@ -184,8 +194,11 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 				Func.Name,
 				func() string {
 					params := strings.Builder{}
-					if len(Func.Params) != 0 {
-						params.WriteString("request")
+					for i, x := range Func.Params {
+						if i != 0 {
+							params.WriteString(", ")
+						}
+						params.WriteString(x.Name)
 					}
 					return params.String()
 				}(),
