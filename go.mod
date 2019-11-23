@@ -1,4 +1,4 @@
-module github.com/CharlesBases/Automation-Poseidon
+module charlesbases/Automation-Poseidon
 
 go 1.13
 
