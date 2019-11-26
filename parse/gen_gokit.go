@@ -43,7 +43,6 @@ import (
 {{parseResponseParams .Results}}
 @apiSuccessExample {json} Response-Example:
 {{decodeJson .Results}}
-
 */
 func (*{{service}}) {{.Name}}({{requestParse}}) ({{responseParse}}) {
 	defer func() {

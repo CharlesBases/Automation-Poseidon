@@ -66,7 +66,7 @@ func (file *File) ParsePkgStruct(root *Package) {
 	// 合并结果
 	for _, packageValue := range packages {
 		for _, fileValue := range packageValue.Files {
-			file.Structs[packageValue.PackagePath] = fileValue.Structs[packageValue.PackagePath]
+			file.Structs[packageValue.PackagePath] = merge(fileValue.Structs[packageValue.PackagePath], file.Structs[packageValue.PackagePath])
 			var i int
 			for key, val := range fileValue.ImportA {
 				_, okB := file.ImportB[val]
@@ -220,4 +220,11 @@ func (file *File) typeConfig(field *Field) string {
 		return field.GoType[:i] + ImportA + "." + field.GoType[index+1:]
 	}
 	return field.GoType
+}
+
+func merge(a, b map[string][]Field) map[string][]Field {
+	for key, val := range b {
+		a[key] = val
+	}
+	return a
 }
