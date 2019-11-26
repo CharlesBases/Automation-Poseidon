@@ -110,7 +110,11 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 
 			for k, v := range file.ImportA {
 				imports.WriteString("\n\t")
-				imports.WriteString(fmt.Sprintf(`%s "%s"`, k, v))
+				if path.Base(v) == k {
+					imports.WriteString(fmt.Sprintf(`"%s"`, v))
+				} else {
+					imports.WriteString(fmt.Sprintf(`%s "%s"`, k, v))
+				}
 			}
 			return template.HTML(imports.String())
 		},
@@ -217,7 +221,7 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 	kitTemplate.Execute(wr, Func)
 }
 
-func (file *File) parseRequestParams(fields []Field) string {
+func (file *File) parseRequestParams(fields []Field) template.HTML {
 	doc := strings.Builder{}
 
 	RequestStruct := new(Struct)
@@ -233,13 +237,13 @@ func (file *File) parseRequestParams(fields []Field) string {
 	}
 
 	for _, field := range RequestStruct.Fields {
-		doc.WriteString(fmt.Sprintf("@apiParam {%s} %s %s\n", field.JsonType, ensnake(field.Name), field.Comment))
+		doc.WriteString(fmt.Sprintf("@apiParam {%s} %s %s\n", field.JsonType, Snake(field.Name), field.Comment))
 		if field.Package != "" {
 			doc.WriteString(fmt.Sprintf("%s", file.parseRequestParams([]Field{field})))
 		}
 	}
 
-	return doc.String()
+	return template.HTML(doc.String())
 }
 
 func (file *File) parseResponseParams(fields []Field) string {
@@ -269,7 +273,7 @@ func (file *File) parseResponseParams(fields []Field) string {
 	}
 
 	for _, field := range ResponseStruct.Fields {
-		doc.WriteString(fmt.Sprintf("@apiSuccess {%s} %s %s\n", field.JsonType, ensnake(field.Name), field.Comment))
+		doc.WriteString(fmt.Sprintf("@apiSuccess {%s} %s %s\n", field.JsonType, Snake(field.Name), field.Comment))
 		if field.Package != "" {
 			doc.WriteString(fmt.Sprintf("%s", file.parseResponseParams([]Field{field})))
 		}
@@ -299,7 +303,7 @@ func (file *File) jsonDemo(fields []Field) interface{} {
 	}
 
 	for _, field := range ParamStrust.Fields {
-		jsonData[ensnake(field.Name)] = file.parseFieldValue(field)
+		jsonData[Snake(field.Name)] = file.parseFieldValue(field)
 	}
 
 	return jsonData
@@ -332,7 +336,7 @@ func (file *File) parseFieldValue(field Field) interface{} {
 }
 
 // AaaBbb to aaa_bbb
-func ensnake(source string) string {
+func Snake(source string) string {
 	builder := strings.Builder{}
 	ascll := []rune(source)
 	for key, word := range ascll {

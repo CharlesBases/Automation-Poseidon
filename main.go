@@ -217,10 +217,10 @@ func main() {
 			go func(i parse.Interface, f parse.Func) {
 				defer swg.Done()
 
-				if !*update && isexit(filepath.Join(gofile.GenInterPath, fmt.Sprintf("%s.go", f.Name))) {
+				if !*update && isexit(filepath.Join(gofile.GenInterPath, fmt.Sprintf("%s.go", parse.Snake(f.Name)))) {
 					return
 				}
-				kitfile, err := createFile(filepath.Join(gofile.GenInterPath, fmt.Sprintf("%s.go", f.Name)))
+				kitfile, err := createFile(filepath.Join(gofile.GenInterPath, fmt.Sprintf("%s.go", parse.Snake(f.Name))))
 				if err != nil {
 					log.Error(err)
 					log.Flush()
