@@ -62,7 +62,6 @@ var (
 
 type Package struct {
 	Name         string
-	Path         string
 	PackagePath  string
 	Files        []File
 	MessageTypes map[string][]string
@@ -78,12 +77,6 @@ type Message struct {
 type Interface struct {
 	Funcs []Func
 	Name  string
-}
-
-type Struct struct {
-	Name    string
-	Fields  []Field
-	Package string // go类型定义的所在包
 }
 
 type Func struct {
@@ -104,12 +97,14 @@ type Field struct {
 }
 
 func (root *Package) ParseStruct(message []Message, astFile *ast.File) *File {
-	file := File{}
-	file.PackagePath = root.PackagePath
+	file := File{
+		PackagePath: root.PackagePath,
+		Structs:     make(map[string]map[string][]Field, 0),
+	}
 
 	file.ParseImport(astFile)
 
-	structs := make([]Struct, 0, 1)
+	structs := make(map[string][]Field, 0)
 	ast.Inspect(astFile, func(x ast.Node) bool {
 		switch x.(type) {
 		case *ast.TypeSpec:
@@ -147,9 +142,9 @@ func (root *Package) ParseStruct(message []Message, astFile *ast.File) *File {
 				}
 			}
 			if isContainsA && !isContainsB {
-				s := file.ParseStruct(spec.Name.Name, structType)
+				fields := file.ParseStruct(spec.Name.Name, structType)
 				log.Info("find struct: ", spec.Name.Name)
-				structs = append(structs, s)
+				structs[spec.Name.Name] = fields
 				root.root.MessageTypes[root.PackagePath] = append(root.root.MessageTypes[root.PackagePath], spec.Name.Name)
 			}
 		default:
@@ -157,6 +152,6 @@ func (root *Package) ParseStruct(message []Message, astFile *ast.File) *File {
 		}
 		return false
 	})
-	file.Structs = structs
+	file.Structs[file.PackagePath] = structs
 	return &file
 }

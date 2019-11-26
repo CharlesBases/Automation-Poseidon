@@ -86,17 +86,14 @@ func (file *File) ParseImport(astFile *ast.File) {
 	}
 }
 
-func (file *File) ParseStruct(name string, structType *ast.StructType) Struct {
-	s := Struct{Fields: make([]Field, 0)}
-	fields := file.ParseField(structType.Fields.List)
-	for _, field := range fields {
+func (file *File) ParseStruct(name string, structType *ast.StructType) []Field {
+	fields := make([]Field, 0)
+	for _, field := range file.ParseField(structType.Fields.List) {
 		if strings.Title(field.Name) == field.Name {
-			s.Fields = append(s.Fields, field)
+			fields = append(fields, field)
 		}
 	}
-	s.Name = name
-	s.Package = file.PackagePath
-	return s
+	return fields
 }
 
 // 解析ast函数
@@ -174,14 +171,9 @@ func (file *File) ParseField(astField []*ast.Field) []Field {
 					ExprName: fieldType,
 					FullName: file.PackagePath,
 				}}, astFile)
-				if len(structFile.Structs) != 0 {
-					for _, Struct := range structFile.Structs {
-						if Struct.Name == fieldType {
-							for _, field := range Struct.Fields {
-								fields = append(fields, field)
-							}
-							break
-						}
+				for _, x := range structFile.Structs {
+					if field, ok := x[fieldType]; ok {
+						fields = append(fields, field...)
 					}
 				}
 			}

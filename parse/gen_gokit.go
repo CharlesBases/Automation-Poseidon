@@ -224,23 +224,14 @@ func (file *File) GenKitFile(Interface *Interface, Func *Func, wr io.Writer) {
 func (file *File) parseRequestParams(fields []Field) template.HTML {
 	doc := strings.Builder{}
 
-	RequestStruct := new(Struct)
-
 	for _, requestParam := range fields {
-		for _, Struct := range file.Structs {
-			if requestParam.ProtoType == Struct.Name {
-				RequestStruct = &Struct
-				break
+		for _, field := range file.Structs[requestParam.Package][requestParam.ProtoType] {
+			doc.WriteString(fmt.Sprintf("@apiParam {%s} %s %s\n", field.JsonType, Snake(field.Name), field.Comment))
+			if field.Package != "" {
+				doc.WriteString(fmt.Sprintf("%s", file.parseRequestParams([]Field{field})))
 			}
 		}
 		break
-	}
-
-	for _, field := range RequestStruct.Fields {
-		doc.WriteString(fmt.Sprintf("@apiParam {%s} %s %s\n", field.JsonType, Snake(field.Name), field.Comment))
-		if field.Package != "" {
-			doc.WriteString(fmt.Sprintf("%s", file.parseRequestParams([]Field{field})))
-		}
 	}
 
 	return template.HTML(doc.String())
@@ -249,34 +240,18 @@ func (file *File) parseRequestParams(fields []Field) template.HTML {
 func (file *File) parseResponseParams(fields []Field) string {
 	doc := strings.Builder{}
 
-	ResponseStruct := new(Struct)
-
 	for _, responseParam := range fields {
-		for _, Struct := range file.Structs {
-			if strings.TrimPrefix(responseParam.ProtoType, "repeated ") == Struct.Name {
-				ResponseStruct = &Struct
-				break
-			}
-		}
-		break
-	}
-
-	for _, field := range ResponseStruct.Fields {
-		if field.Name == "Results" && field.Package != "" {
-			for _, Struct := range file.Structs {
-				if field.ProtoType == Struct.Name {
-					ResponseStruct = &Struct
-					break
+		for _, responseField := range file.Structs[responseParam.Package][responseParam.ProtoType] {
+			if responseField.Name == "Results" && responseField.Package != "" {
+				for _, resultsField := range file.Structs[responseField.Package][responseField.ProtoType] {
+					doc.WriteString(fmt.Sprintf("@apiSuccess {%s} %s %s\n", resultsField.JsonType, Snake(resultsField.Name), resultsField.Comment))
+					if resultsField.Package != "" {
+						doc.WriteString(fmt.Sprintf("%s", file.parseResponseParams([]Field{resultsField})))
+					}
 				}
 			}
 		}
-	}
-
-	for _, field := range ResponseStruct.Fields {
-		doc.WriteString(fmt.Sprintf("@apiSuccess {%s} %s %s\n", field.JsonType, Snake(field.Name), field.Comment))
-		if field.Package != "" {
-			doc.WriteString(fmt.Sprintf("%s", file.parseResponseParams([]Field{field})))
-		}
+		break
 	}
 
 	return doc.String()
@@ -290,20 +265,12 @@ func (file *File) decodeJson(fields []Field) template.HTML {
 
 func (file *File) jsonDemo(fields []Field) interface{} {
 	jsonData := make(map[string]interface{}, 0)
-	ParamStrust := new(Struct)
 
-	for _, requestParam := range fields {
-		for _, Struct := range file.Structs {
-			if requestParam.ProtoType == Struct.Name {
-				ParamStrust = &Struct
-				break
-			}
+	for _, param := range fields {
+		for _, field := range file.Structs[param.Package][param.ProtoType] {
+			jsonData[Snake(field.Name)] = file.parseFieldValue(field)
 		}
 		break
-	}
-
-	for _, field := range ParamStrust.Fields {
-		jsonData[Snake(field.Name)] = file.parseFieldValue(field)
 	}
 
 	return jsonData
@@ -322,12 +289,10 @@ func (file *File) parseFieldValue(field Field) interface{} {
 		if field.Package != "" {
 			data := make([]interface{}, 1)
 			data[0] = file.jsonDemo([]Field{field})
-			// data[1] = map[string]interface{}{}
 			return data
 		} else {
 			data := make([]interface{}, 1)
 			data[0] = jsonDefaultValue[strings.ReplaceAll(field.JsonType, "[]", "")]
-			// data[1] = data[0]
 			return data
 		}
 

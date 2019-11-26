@@ -59,6 +59,16 @@ func main() {
 
 	sourcefilechannel := make(chan int64)
 
+	errorchannel := make(chan error)
+	go func() {
+		for {
+			select {
+			case <-errorchannel:
+				os.Exit(1)
+			}
+		}
+	}()
+
 	protofile := path.Join(*generateProtoPath, fmt.Sprintf("%s.proto", *protoPackage))
 
 	*sourceFile, _ = filepath.Abs(*sourceFile)
@@ -97,8 +107,7 @@ func main() {
 				abspath, err := filepath.Abs(*generateProtoPath)
 				if err != nil {
 					log.Error("parse generate proto path error: ", err)
-					log.Flush()
-					os.Exit(1)
+					errorchannel <- err
 				}
 				if *generateProto {
 					os.MkdirAll(abspath, 0755)
@@ -109,8 +118,7 @@ func main() {
 				abspath, err := filepath.Abs(*generateInterPath)
 				if err != nil {
 					log.Error("parse generate interface path error: ", err)
-					log.Flush()
-					os.Exit(1)
+					errorchannel <- err
 				}
 				os.MkdirAll(abspath, 0755)
 				return strings.TrimPrefix(abspath, src)[1:]
@@ -119,12 +127,12 @@ func main() {
 				abspath, err := filepath.Abs(*generateLogicPath)
 				if err != nil {
 					log.Error("parse generate logic path error: ", err)
-					log.Flush()
-					os.Exit(1)
+					errorchannel <- err
 				}
 				os.MkdirAll(abspath, 0755)
 				return strings.TrimPrefix(abspath, src)[1:]
 			}(),
+			Structs: make(map[string]map[string][]parse.Field, 0),
 		}
 
 		sourcefilechannel <- time.Now().UnixNano()
@@ -135,8 +143,7 @@ func main() {
 	gofile.ParseFile(astFile)
 	if len(gofile.Interfaces) == 0 {
 		log.Error("no interface found")
-		log.Flush()
-		os.Exit(1)
+		errorchannel <- err
 	}
 
 	// 解析源文件包下结构体
@@ -153,8 +160,7 @@ func main() {
 			profile, err := createFile(protofile)
 			if err != nil {
 				log.Error(err)
-				log.Flush()
-				os.Exit(1)
+				errorchannel <- err
 			}
 			defer profile.Close()
 			gofile.GenProtoFile(profile)
@@ -165,8 +171,7 @@ func main() {
 			out, err := exec.Command("protoc", "--proto_path="+dir+"/", "--gogofaster_out=plugins=grpc:"+dir+"/", protofile).CombinedOutput()
 			if err != nil {
 				log.Error("protoc error: ", string(out))
-				log.Flush()
-				os.Exit(1)
+				errorchannel <- err
 			}
 			log.Info("protoc complete !")
 		}
@@ -180,8 +185,7 @@ func main() {
 		implementFile, err := createFile(filepath.Join(gofile.GenInterPath, "implement.go"))
 		if err != nil {
 			log.Error(err)
-			log.Flush()
-			os.Exit(1)
+			errorchannel <- err
 		}
 		gofile.GenImplFile(implementFile)
 	}()
@@ -206,8 +210,7 @@ func main() {
 				logicfile, err := createFile(filepath.Join(grouppath, fmt.Sprintf("%s.go", strings.ToLower(f.Group))))
 				if err != nil {
 					log.Error(err)
-					log.Flush()
-					os.Exit(1)
+					errorchannel <- err
 				}
 				gofile.GenLogicFile(&f, logicfile)
 
@@ -223,8 +226,7 @@ func main() {
 				kitfile, err := createFile(filepath.Join(gofile.GenInterPath, fmt.Sprintf("%s.go", parse.Snake(f.Name))))
 				if err != nil {
 					log.Error(err)
-					log.Flush()
-					os.Exit(1)
+					errorchannel <- err
 				}
 				gofile.GenKitFile(&i, &f, kitfile)
 			}(Interface, Func)

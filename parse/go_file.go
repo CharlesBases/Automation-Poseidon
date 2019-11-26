@@ -2,6 +2,7 @@ package parse
 
 import (
 	"go/parser"
+	"path"
 	"strconv"
 	"strings"
 
@@ -10,14 +11,14 @@ import (
 )
 
 type File struct {
-	Name          string // 文件名
-	PackagePath   string // 文件包路径
-	ProjectPath   string // 项目路径 go.mod.module
-	ProtoPackage  string // 生成 proto 文件 package 名
-	GenProtoPath  string // 生成 proto 文件路径
-	GenInterPath  string // 生成 controllers 路径
-	GenLogicPath  string // 逻辑层包路径 Func 首单词分组
-	Structs       []Struct
+	Name          string                        // 文件名
+	PackagePath   string                        // 文件包路径
+	ProjectPath   string                        // 项目路径 go.mod.module
+	GenProtoPath  string                        // 生成 proto 文件路径
+	GenInterPath  string                        // 生成 controllers 路径
+	GenLogicPath  string                        // 逻辑层包路径 Func 首单词分组
+	ProtoPackage  string                        // 生成 proto 文件 package 名
+	Structs       map[string]map[string][]Field // [package][structname]fields
 	Interfaces    []Interface
 	ImportA       map[string]string
 	ImportB       map[string]string
@@ -28,9 +29,8 @@ type File struct {
 func (file *File) ParsePkgStruct(root *Package) {
 	file.ParseStructs()
 	file.ParseStructMessage()
-	structMessage := file.StructMessage
 	packages := make([]Package, 0)
-	for key, value := range structMessage {
+	for key, value := range file.StructMessage {
 		log.Info("parse structs in package: ", key)
 		conf := loader.Config{ParserMode: parser.ParseComments}
 		conf.Import(key)
@@ -40,15 +40,17 @@ func (file *File) ParsePkgStruct(root *Package) {
 			continue
 		}
 		astFiles := program.Package(key).Files
-		Root := Package{root: root}
-		Root.PackagePath = key
-		Root.Files = make([]File, 0, len(astFiles))
+		Root := Package{
+			Name:        path.Base(key),
+			PackagePath: key,
+			Files:       make([]File, 0),
+			root:        root,
+		}
 		for _, astFile := range astFiles {
 			structFile := Root.ParseStruct(value, astFile)
 			if structFile == nil {
 				continue
 			}
-			structFile.PackagePath = Root.PackagePath
 			structFile.ParsePkgStruct(root)
 			Root.Files = append(Root.Files, *structFile)
 		}
@@ -60,14 +62,11 @@ func (file *File) ParsePkgStruct(root *Package) {
 	if len(packages) == 0 {
 		return
 	}
-	if len(file.Structs) == 0 {
-		file.Structs = make([]Struct, 0)
-	}
 
 	// 合并结果
 	for _, packageValue := range packages {
 		for _, fileValue := range packageValue.Files {
-			file.Structs = append(file.Structs, fileValue.Structs...)
+			file.Structs[packageValue.PackagePath] = fileValue.Structs[packageValue.PackagePath]
 			var i int
 			for key, val := range fileValue.ImportA {
 				_, okB := file.ImportB[val]
@@ -89,10 +88,12 @@ func (file *File) ParsePkgStruct(root *Package) {
 }
 
 func (file *File) ParseStructs() {
-	for structIndex, fileStruct := range file.Structs {
-		for fieldIndex, field := range fileStruct.Fields {
-			protoType := file.parseType(field.GoType)
-			file.Structs[structIndex].Fields[fieldIndex].ProtoType = protoType
+	for packageName, packageStruct := range file.Structs {
+		for structName, structFields := range packageStruct {
+			for fieldIndex, field := range structFields {
+				protoType := file.parseType(field.GoType)
+				file.Structs[packageName][structName][fieldIndex].ProtoType = protoType
+			}
 		}
 	}
 }
@@ -187,10 +188,12 @@ func (file *File) GoTypeConfig() {
 			}
 		}
 	}
-	for structKey, structValue := range file.Structs {
-		for fieldKey, fieldValue := range structValue.Fields {
-			goType := file.typeConfig(&fieldValue)
-			file.Structs[structKey].Fields[fieldKey].GoType = goType
+	for packageName, packageStruct := range file.Structs {
+		for structName, fields := range packageStruct {
+			for fieldIndex, field := range fields {
+				goType := file.typeConfig(&field)
+				file.Structs[packageName][structName][fieldIndex].GoType = goType
+			}
 		}
 	}
 }
