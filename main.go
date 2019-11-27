@@ -229,7 +229,6 @@ func main() {
 				defer swg.Done()
 
 				currentfile := filepath.Join(config.GenInterPath, fmt.Sprintf("%s.go", utils.Snake(f.Name)))
-				defer gofmt(filepath.Join(src, currentfile))
 
 				if !*update && isexit(currentfile) {
 					return
@@ -251,6 +250,8 @@ func main() {
 	}
 
 	swg.Wait()
+
+	gofmt(filepath.Join(src, config.GenInterPath))
 
 	log.Info("complete!")
 }
