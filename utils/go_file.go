@@ -10,22 +10,6 @@ import (
 	"golang.org/x/tools/go/loader"
 )
 
-type File struct {
-	Name          string                        // 文件名
-	PackagePath   string                        // 文件包路径
-	ProjectPath   string                        // 项目路径 go.mod.module
-	GenProtoPath  string                        // 生成 proto 文件路径
-	GenInterPath  string                        // 生成 controllers 路径
-	GenLogicPath  string                        // 逻辑层包路径 Func 首单词分组
-	ProtoPackage  string                        // 生成 proto 文件 package 名
-	Structs       map[string]map[string][]Field // [package][structname]fields
-	Interfaces    []Interface
-	ImportA       map[string]string
-	ImportB       map[string]string
-	Message       map[string]string
-	StructMessage map[string][]Message
-}
-
 func (file *File) ParsePkgStruct(root *Package) {
 	file.ParseStructs()
 	file.ParseStructMessage()
@@ -220,11 +204,4 @@ func (file *File) typeConfig(field *Field) string {
 		return field.GoType[:i] + ImportA + "." + field.GoType[index+1:]
 	}
 	return field.GoType
-}
-
-func merge(a, b map[string][]Field) map[string][]Field {
-	for key, val := range b {
-		a[key] = val
-	}
-	return a
 }

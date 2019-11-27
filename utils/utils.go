@@ -1,10 +1,8 @@
 package utils
 
 import (
-	"go/ast"
+	"fmt"
 	"strings"
-
-	log "github.com/cihub/seelog"
 )
 
 var (
@@ -53,12 +51,6 @@ var (
 		"error":       {},
 		"interface{}": {},
 	}
-	jsonDefaultValue = map[string]interface{}{
-		"Number":  0,
-		"String":  "",
-		"Boolean": false,
-		"Object":  nil,
-	}
 )
 
 type Package struct {
@@ -69,10 +61,20 @@ type Package struct {
 	root         *Package
 }
 
-type Message struct {
-	Name     string // struct名字
-	ExprName string // 调用名 （pager.PagerListResp）
-	FullName string // 全名 （带包名）
+type File struct {
+	Name          string                        // 文件名
+	PackagePath   string                        // 文件包路径
+	ProjectPath   string                        // 项目路径 go.mod.module
+	GenProtoPath  string                        // 生成 proto 文件路径
+	GenInterPath  string                        // 生成 controllers 路径
+	GenLogicPath  string                        // 逻辑层包路径 Func 首单词分组
+	ProtoPackage  string                        // 生成 proto 文件 package 名
+	Structs       map[string]map[string][]Field // [package][structname]fields
+	Interfaces    []Interface
+	ImportA       map[string]string
+	ImportB       map[string]string
+	Message       map[string]string
+	StructMessage map[string][]Message
 }
 
 type Interface struct {
@@ -97,64 +99,57 @@ type Field struct {
 	Package   string // go类型定义的所在包
 }
 
-func (root *Package) ParseStruct(message []Message, astFile *ast.File) *File {
-	file := File{
-		PackagePath: root.PackagePath,
-		Structs:     make(map[string]map[string][]Field, 0),
+type Message struct {
+	Name     string // struct名字
+	ExprName string // 调用名 （pager.PagerListResp）
+	FullName string // 全名 （带包名）
+}
+
+func title(name string) string {
+	builder := strings.Builder{}
+	for _, val := range strings.Split(name, "_") {
+		builder.WriteString(strings.Title(val))
 	}
+	return builder.String()
+}
 
-	file.ParseImport(astFile)
+func generateImport(key, val string) string {
+	sort := packageSort(val)
+	if key == sort {
+		return fmt.Sprintf(`"%s"`, val)
+	} else {
+		return fmt.Sprintf(`%s "%s"`, key, val)
+	}
+}
 
-	structs := make(map[string][]Field, 0)
-	ast.Inspect(astFile, func(x ast.Node) bool {
-		switch x.(type) {
-		case *ast.TypeSpec:
-			spec := x.(*ast.TypeSpec)
-			structType, ok := spec.Type.(*ast.StructType)
-			if !ok {
-				return true
-			}
-			var (
-				isContainsA bool
-				isContainsB bool
-			)
-			if message == nil {
-				isContainsA = true
-			} else {
-				for _, v := range message {
-					if v.Name == spec.Name.Name {
-						isContainsA = true
-					}
-				}
-			}
-			if root.root.MessageTypes == nil {
-				root.root.MessageTypes = make(map[string][]string, 0)
-				isContainsB = false
-			} else {
-				messageType, ok := root.root.MessageTypes[root.PackagePath]
-				if ok {
-					for _, v := range messageType {
-						if v == spec.Name.Name {
-							isContainsB = true
-						}
-					}
-				} else {
-					root.root.MessageTypes[root.PackagePath] = make([]string, 0)
-				}
-			}
-			if isContainsA && !isContainsB {
-				fields := file.ParseStruct(spec.Name.Name, structType)
-				log.Info("find struct: ", spec.Name.Name)
-				structs[spec.Name.Name] = fields
-				root.root.MessageTypes[root.PackagePath] = append(root.root.MessageTypes[root.PackagePath], spec.Name.Name)
-			}
-		default:
-			return true
-		}
-		return false
-	})
-	file.Structs[file.PackagePath] = structs
-	return &file
+func packageSort(Package string) string {
+	if index := strings.LastIndex(Package, "/"); index != -1 {
+		return Package[index+1:]
+	} else {
+		return Package
+	}
+}
+
+func parseJsonType(fieldType string) string {
+	jsonType := strings.Builder{}
+	fieldType = strings.TrimPrefix(fieldType, "*")
+	if strings.HasPrefix(fieldType, "[]") {
+		fieldType = strings.TrimPrefix(fieldType, "[]")
+		jsonType.WriteString("[]")
+	}
+	if val, ok := golangType2JsonType[fieldType]; ok {
+		jsonType.WriteString(val)
+	} else {
+		jsonType.WriteString("Object")
+	}
+	return jsonType.String()
+}
+
+func merge(a, b map[string][]Field) map[string][]Field {
+	for key, val := range b {
+		a[key] = val
+	}
+	return a
 }
 
 // AaaBbb to aaa_bbb

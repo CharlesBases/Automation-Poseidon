@@ -158,13 +158,17 @@ func main() {
 		defer swg.Done()
 
 		if *generateProto {
-			profile, err := createFile(protofile)
+			protoFile, err := createFile(protofile)
 			if err != nil {
 				log.Error(err)
 				errorchannel <- err
 			}
-			defer profile.Close()
-			config.GenProtoFile(profile)
+			defer protoFile.Close()
+
+			infor := &template.Infor{
+				File: config,
+			}
+			infor.GenerateProto(protoFile)
 
 			// run protoc
 			log.Info("run the protoc command ...")
@@ -188,7 +192,8 @@ func main() {
 			log.Error(err)
 			errorchannel <- err
 		}
-		config.GenImplFile(implementFile)
+		infor := &template.Infor{File: config}
+		infor.GenerateImplement(implementFile)
 	}()
 
 	// gen func
@@ -211,9 +216,12 @@ func main() {
 						log.Error(err)
 						errorchannel <- err
 					}
-					config.GenLogicFile(&f, logicfile)
+					infor := &template.Infor{
+						File: config,
+						Func: &f,
+					}
+					infor.GenerateLogic(logicfile)
 				}
-
 			}(Func)
 
 			// controllers
