@@ -1,7 +1,8 @@
-package parse
+package utils
 
 import (
 	"go/ast"
+	"strings"
 
 	log "github.com/cihub/seelog"
 )
@@ -154,4 +155,23 @@ func (root *Package) ParseStruct(message []Message, astFile *ast.File) *File {
 	})
 	file.Structs[file.PackagePath] = structs
 	return &file
+}
+
+// AaaBbb to aaa_bbb
+func Snake(source string) string {
+	builder := strings.Builder{}
+	ascll := []rune(source)
+	for key, word := range ascll {
+		if word <= 90 {
+			if key != 0 {
+				if word != 68 || ascll[key-1] != 73 {
+					builder.WriteString("_")
+				}
+			}
+			builder.WriteString(strings.ToLower(string(word)))
+		} else {
+			builder.WriteString(string(word))
+		}
+	}
+	return builder.String()
 }

@@ -15,7 +15,8 @@ import (
 
 	log "github.com/cihub/seelog"
 
-	"charlesbases/Automation-Poseidon/parse"
+	"charlesbases/Automation-Poseidon/template"
+	"charlesbases/Automation-Poseidon/utils"
 )
 
 var (
@@ -80,7 +81,7 @@ func main() {
 		return
 	}
 
-	gofile := new(parse.File)
+	config := new(utils.File)
 	swg.Add(1)
 	go func() {
 		defer swg.Done()
@@ -93,7 +94,7 @@ func main() {
 			return "src"
 		}()
 
-		*gofile = parse.File{
+		*config = utils.File{
 			Name:        filepath.Base(*sourceFile),
 			PackagePath: strings.TrimPrefix(filepath.Dir(*sourceFile), src)[1:],
 			ProjectPath: func() string {
@@ -132,7 +133,7 @@ func main() {
 				os.MkdirAll(abspath, 0755)
 				return strings.TrimPrefix(abspath, src)[1:]
 			}(),
-			Structs: make(map[string]map[string][]parse.Field, 0),
+			Structs: make(map[string]map[string][]utils.Field, 0),
 		}
 
 		sourcefilechannel <- time.Now().UnixNano()
@@ -140,16 +141,16 @@ func main() {
 
 	<-sourcefilechannel
 
-	gofile.ParseFile(astFile)
-	if len(gofile.Interfaces) == 0 {
+	config.ParseFile(astFile)
+	if len(config.Interfaces) == 0 {
 		log.Error("no interface found")
 		errorchannel <- err
 	}
 
 	// 解析源文件包下结构体
-	gofile.ParsePkgStruct(&parse.Package{PackagePath: gofile.PackagePath})
+	config.ParsePkgStruct(&utils.Package{PackagePath: config.PackagePath})
 
-	gofile.GoTypeConfig()
+	config.GoTypeConfig()
 
 	// generate proto file
 	swg.Add(1)
@@ -163,7 +164,7 @@ func main() {
 				errorchannel <- err
 			}
 			defer profile.Close()
-			gofile.GenProtoFile(profile)
+			config.GenProtoFile(profile)
 
 			// run protoc
 			log.Info("run the protoc command ...")
@@ -182,58 +183,67 @@ func main() {
 	go func() {
 		defer swg.Done()
 
-		implementFile, err := createFile(filepath.Join(gofile.GenInterPath, "implement.go"))
+		implementFile, err := createFile(filepath.Join(config.GenInterPath, "implement.go"))
 		if err != nil {
 			log.Error(err)
 			errorchannel <- err
 		}
-		gofile.GenImplFile(implementFile)
+		config.GenImplFile(implementFile)
 	}()
 
 	// gen func
-	for _, Interface := range gofile.Interfaces {
+	for _, Interface := range config.Interfaces {
 		for _, Func := range Interface.Funcs {
 			swg.Add(2)
 
 			// logic
-			go func(f parse.Func) {
+			go func(f utils.Func) {
 				defer swg.Done()
 
-				grouppath := filepath.Join(gofile.GenLogicPath, strings.ToLower(f.Group))
+				logicdir := filepath.Join(config.GenLogicPath, strings.ToLower(f.Group))
+				currentlogicfile := filepath.Join(logicdir, fmt.Sprintf("%s.go", strings.ToLower(f.Group)))
 
-				os.MkdirAll(filepath.Join(src, grouppath), 0755)
+				os.MkdirAll(filepath.Join(src, logicdir), 0755)
 
-				if isexit(filepath.Join(grouppath, fmt.Sprintf("%s.go", strings.ToLower(f.Group)))) {
-					return
+				if !isexit(currentlogicfile) {
+					logicfile, err := createFile(currentlogicfile)
+					if err != nil {
+						log.Error(err)
+						errorchannel <- err
+					}
+					config.GenLogicFile(&f, logicfile)
 				}
-
-				logicfile, err := createFile(filepath.Join(grouppath, fmt.Sprintf("%s.go", strings.ToLower(f.Group))))
-				if err != nil {
-					log.Error(err)
-					errorchannel <- err
-				}
-				gofile.GenLogicFile(&f, logicfile)
 
 			}(Func)
 
 			// controllers
-			go func(i parse.Interface, f parse.Func) {
+			go func(i utils.Interface, f utils.Func) {
 				defer swg.Done()
 
-				if !*update && isexit(filepath.Join(gofile.GenInterPath, fmt.Sprintf("%s.go", parse.Snake(f.Name)))) {
+				currentfile := filepath.Join(config.GenInterPath, fmt.Sprintf("%s.go", utils.Snake(f.Name)))
+				defer gofmt(filepath.Join(src, currentfile))
+
+				if !*update && isexit(currentfile) {
 					return
 				}
-				kitfile, err := createFile(filepath.Join(gofile.GenInterPath, fmt.Sprintf("%s.go", parse.Snake(f.Name))))
+				controllerFile, err := createFile(currentfile)
 				if err != nil {
 					log.Error(err)
 					errorchannel <- err
 				}
-				gofile.GenKitFile(&i, &f, kitfile)
+				infor := &template.Infor{
+					File:      config,
+					Interface: &i,
+					Func:      &f,
+				}
+				infor.GenerateController(controllerFile)
+
 			}(Interface, Func)
 		}
 	}
 
 	swg.Wait()
+
 	log.Info("complete!")
 }
 
@@ -249,4 +259,8 @@ func createFile(fileName string) (*os.File, error) {
 	fileName = filepath.Join(src, fileName)
 	os.RemoveAll(fileName)
 	return os.Create(fileName)
+}
+
+func gofmt(filepath string) {
+	exec.Command("gofmt", "-l", "-w", "-s", filepath).Run()
 }

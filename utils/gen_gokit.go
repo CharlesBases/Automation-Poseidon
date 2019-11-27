@@ -1,4 +1,4 @@
-package parse
+package utils
 
 import (
 	"encoding/json"
@@ -299,21 +299,4 @@ func (file *File) parseFieldValue(field Field) interface{} {
 	return nil
 }
 
-// AaaBbb to aaa_bbb
-func Snake(source string) string {
-	builder := strings.Builder{}
-	ascll := []rune(source)
-	for key, word := range ascll {
-		if word <= 90 {
-			if key != 0 {
-				if word != 68 || ascll[key-1] != 73 {
-					builder.WriteString("_")
-				}
-			}
-			builder.WriteString(strings.ToLower(string(word)))
-		} else {
-			builder.WriteString(string(word))
-		}
-	}
-	return builder.String()
-}
+
