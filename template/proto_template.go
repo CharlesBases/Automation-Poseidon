@@ -1,9 +1,9 @@
 package template
 
-const protoTemplate = `// this file is generated from {{.PkgPath}}
+const protoTemplate = `// this file is generated from {{.PackagePath}}
 syntax = "proto3";
 
-package {{.Package}};
+package {{.ProtoPackage}};
 {{range $interfaceIndex, $interface := .Interfaces}}
 service {{.Name}} {
 {{range $funcsIndex, $func := .Funcs}}    rpc {{.Name}} ({{.Name}}Req_) returns ({{.Name}}Resp_) {} 
@@ -16,9 +16,10 @@ message {{.Name}}Req_ {
 message {{$func.Name}}Resp_ {
 {{range $resultsIndex, $vresult:= .Results}}    {{.ProtoType | unescaped}} {{.Name}} = {{$resultsIndex | index}};
 {{end}}}
-{{end}}{{end}}{{range $structsIndex, $struct := .Structs}}
-message {{$struct.Name}} {
-{{range $fieldsIndex, $field := .Fields}}    {{.ProtoType | unescaped}} {{.Name}} = {{$fieldsIndex | index}};
+{{end}}{{end}}{{range $structsPackage, $structs := .Structs}} {{range $structName, $fields := $structs}}
+message {{$structName}} {
+{{range $fieldsIndex, $field := $fields}}    {{.ProtoType | unescaped}} {{.Name}} = {{$fieldsIndex | index}};
 {{end}}}
+{{end}}
 {{end}}
 `

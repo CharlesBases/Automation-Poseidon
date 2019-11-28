@@ -7,7 +7,6 @@ import (
 	"go/token"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -65,12 +64,11 @@ func main() {
 		for {
 			select {
 			case <-errorchannel:
+				log.Flush()
 				os.Exit(1)
 			}
 		}
 	}()
-
-	protofile := path.Join(*generateProtoPath, fmt.Sprintf("%s.proto", *protoPackage))
 
 	*sourceFile, _ = filepath.Abs(*sourceFile)
 	log.Info("parsing files for go: ", *sourceFile)
@@ -158,6 +156,7 @@ func main() {
 		defer swg.Done()
 
 		if *generateProto {
+			protofile := filepath.Join(config.GenProtoPath, fmt.Sprintf("%s.proto", *protoPackage))
 			protoFile, err := createFile(protofile)
 			if err != nil {
 				log.Error(err)
@@ -170,10 +169,17 @@ func main() {
 			}
 			infor.GenerateProto(protoFile)
 
+			absprotofile := filepath.Join(src, protofile)
+			dir := filepath.Dir(absprotofile)
+
 			// run protoc
 			log.Info("run the protoc command ...")
-			dir := filepath.Dir(protofile)
-			out, err := exec.Command("protoc", "--proto_path="+dir+"/", "--gogofaster_out=plugins=grpc:"+dir+"/", protofile).CombinedOutput()
+			out, err := exec.Command(
+				"protoc",
+				fmt.Sprintf("--proto_path=%s", dir),
+				fmt.Sprintf("--gogofaster_out=plugins=grpc:%s", dir),
+				absprotofile,
+			).CombinedOutput()
 			if err != nil {
 				log.Error("protoc error: ", string(out))
 				errorchannel <- err
