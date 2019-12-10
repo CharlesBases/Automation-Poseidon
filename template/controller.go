@@ -184,13 +184,14 @@ func (infor *Infor) parseResponseParams(fields []utils.Field) template.HTML {
 	sb := strings.Builder{}
 	for _, field := range fields {
 		for _, structField := range infor.File.Structs[field.Package][field.ProtoType] {
-			if structField.Name == "Results" && structField.Package != "" {
-				for _, innerStructField := range infor.File.Structs[structField.Package][structField.ProtoType] {
-					sb.WriteString(fmt.Sprintf("@apiSuccess {%s} %s %s\n", innerStructField.JsonType, utils.Snake(innerStructField.Name), innerStructField.Comment))
-					if innerStructField.Package != "" {
-						sb.WriteString(fmt.Sprintf("%s", infor.parseResponseParams([]utils.Field{innerStructField})))
-					}
+			if responseParamDepth == 1 {
+				if structField.Name != "Results" {
+					continue
 				}
+			}
+			sb.WriteString(fmt.Sprintf("@apiSuccess {%s} %s %s\n", structField.JsonType, utils.Snake(structField.Name), structField.Comment))
+			if structField.Package != "" {
+				sb.WriteString(fmt.Sprintf("%s", infor.parseResponseParams([]utils.Field{structField})))
 			}
 		}
 	}

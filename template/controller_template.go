@@ -26,7 +26,6 @@ import (
 @apiParamExample {json} Request-Example:
 {{jsonDemo .Params}}
 
-@apiSuccess {Object} results 返回结果
 {{parseResponseParams .Results}}
 @apiSuccessExample {json} Response-Example:
 {{jsonDemo .Results}}
