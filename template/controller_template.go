@@ -4,7 +4,6 @@ const controllerTemplate = `// this file is generated for {{.Name}}
 package {{package}}
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"gitlab.ifchange.com/bot/gokitcommon/log"
@@ -69,7 +68,7 @@ func MakeEndpoint{{.Name}}(svc {{interface}}) endpoint.Endpoint {
 
 func DecodeRequest{{.Name}}(ctx context.Context, r *http.Request) (interface{}, error) { {{requestDecode}} }
 
-func EncodeResponse{{.Name}}(ctx context.Context, w http.ResponseWriter, response interface{}) error {
-	return web.EncodeResponse(w, response)
+func EncodeResponse{{.Name}}(ctx context.Context, rw http.ResponseWriter, response interface{}) error {
+	return web.EncodeResponse(ctx, rw, response)
 }
 `

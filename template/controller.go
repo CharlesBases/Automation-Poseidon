@@ -91,13 +91,11 @@ func (infor *Infor) requestDecode() template.HTML {
 		}
 		sb.WriteString(fmt.Sprintf(`
 			request := new(%s)
-			if err := json.NewDecoder(r.Body).Decode(request); err != nil {
-				log.Error("decode request error: ", err)
-			}
-			return request, nil
+			return web.DecodeRequest(r, request)
 `,
 			strings.TrimPrefix(x.GoType, "*"),
 		))
+		break
 	}
 	return template.HTML(sb.String())
 }
@@ -158,6 +156,9 @@ func (infor *Infor) business() template.HTML {
 func (infor *Infor) parseRequestParams(fields []utils.Field) template.HTML {
 	sb := strings.Builder{}
 	for _, requestParam := range fields {
+		if requestParam.Package == "context" || requestParam.Package == "golang.org/x/net/context" {
+			continue
+		}
 		for _, field := range infor.File.Structs[requestParam.Package][requestParam.ProtoType] {
 			sb.WriteString(fmt.Sprintf("@apiParam {%s} %s %s\n", field.JsonType, utils.Snake(field.Name), field.Comment))
 			if field.Package != "" {
@@ -196,6 +197,9 @@ func (infor *Infor) jsonDemo(fields []utils.Field) template.HTML {
 func (infor *Infor) decode(fields []utils.Field) interface{} {
 	jsonDatas := make(map[string]interface{}, 0)
 	for _, param := range fields {
+		if param.Package == "context" || param.Package == "golang.org/x/net/context" {
+			continue
+		}
 		for _, field := range infor.File.Structs[param.Package][param.ProtoType] {
 			jsonDatas[utils.Snake(field.Name)] = infor.parseField(field)
 		}
