@@ -15,6 +15,11 @@ import (
 )
 
 var (
+	requestParamDepth  = 0
+	responseParamDepth = 0
+)
+
+var (
 	jsonDefaultValue = map[string]interface{}{
 		"Number":  0,
 		"String":  "",
@@ -154,36 +159,40 @@ func (infor *Infor) business() template.HTML {
 }
 
 func (infor *Infor) parseRequestParams(fields []utils.Field) template.HTML {
+	requestParamDepth++
+
 	sb := strings.Builder{}
-	for _, requestParam := range fields {
-		if requestParam.Package == "context" || requestParam.Package == "golang.org/x/net/context" {
-			continue
-		}
-		for _, field := range infor.File.Structs[requestParam.Package][requestParam.ProtoType] {
-			sb.WriteString(fmt.Sprintf("@apiParam {%s} %s %s\n", field.JsonType, utils.Snake(field.Name), field.Comment))
-			if field.Package != "" {
-				sb.WriteString(fmt.Sprintf("%s", infor.parseRequestParams([]utils.Field{field})))
+	for _, field := range fields {
+		if requestParamDepth == 1 {
+			if field.Package == "context" || field.Package == "golang.org/x/net/context" {
+				continue
 			}
 		}
-		break
+		for _, structField := range infor.File.Structs[field.Package][field.ProtoType] {
+			sb.WriteString(fmt.Sprintf("@apiParam {%s} %s %s\n", structField.JsonType, utils.Snake(structField.Name), structField.Comment))
+			if structField.Package != "" {
+				sb.WriteString(fmt.Sprintf("%s", infor.parseRequestParams([]utils.Field{structField})))
+			}
+		}
 	}
 	return template.HTML(sb.String())
 }
 
 func (infor *Infor) parseResponseParams(fields []utils.Field) template.HTML {
+	responseParamDepth++
+
 	sb := strings.Builder{}
-	for _, responseParam := range fields {
-		for _, responseField := range infor.File.Structs[responseParam.Package][responseParam.ProtoType] {
-			if responseField.Name == "Results" && responseField.Package != "" {
-				for _, resultsField := range infor.File.Structs[responseField.Package][responseField.ProtoType] {
-					sb.WriteString(fmt.Sprintf("@apiSuccess {%s} %s %s\n", resultsField.JsonType, utils.Snake(resultsField.Name), resultsField.Comment))
-					if resultsField.Package != "" {
-						sb.WriteString(fmt.Sprintf("%s", infor.parseResponseParams([]utils.Field{resultsField})))
+	for _, field := range fields {
+		for _, structField := range infor.File.Structs[field.Package][field.ProtoType] {
+			if structField.Name == "Results" && structField.Package != "" {
+				for _, innerStructField := range infor.File.Structs[structField.Package][structField.ProtoType] {
+					sb.WriteString(fmt.Sprintf("@apiSuccess {%s} %s %s\n", innerStructField.JsonType, utils.Snake(innerStructField.Name), innerStructField.Comment))
+					if innerStructField.Package != "" {
+						sb.WriteString(fmt.Sprintf("%s", infor.parseResponseParams([]utils.Field{innerStructField})))
 					}
 				}
 			}
 		}
-		break
 	}
 	return template.HTML(sb.String())
 }
