@@ -19,14 +19,14 @@ import (
 )
 
 var (
-	sourceFile        = flag.String("file", ".", "full path of the interface file")
-	projectPath       = flag.String("project", "", "module path")
-	generateProtoPath = flag.String("protoP", "./pb/", "full path of the generate rpc folder")
-	generateInterPath = flag.String("interP", "../controllers/", "full path of the generate interface folder")
-	generateLogicPath = flag.String("logicP", "../logics/", "full path of the generate logics folder")
-	protoPackage      = flag.String("package", "pb", "package name in .proto file")
-	generateProto     = flag.Bool("proto", false, "generate proto file or not")
-	update            = flag.Bool("update", false, "update existing interface or not")
+	sourceFile        = flag.String("file", ".", "full path of the interface file")                            // 源文件路径
+	projectPath       = flag.String("project", "", "module path")                                              // go.mod 中项目路径
+	generateInterPath = flag.String("interP", "../controllers/", "full path of the generate interface folder") // 路由层文件夹
+	generateLogicPath = flag.String("logicP", "../logics/", "full path of the generate logics folder")         // 业务层文件夹
+	generateProtoPath = flag.String("protoP", "./pb/", "full path of the generate rpc folder")                 // .proto 文件夹
+	protoPackage      = flag.String("package", "pb", "package name in .proto file")                            // .proto 文件包名
+	generateProto     = flag.Bool("proto", false, "generate proto file or not")                                // 是否生成 .proto 文件
+	update            = flag.Bool("update", false, "update existing interface or not")                         // 是否更新接口
 )
 
 var src string // $GOPATH/src
@@ -216,7 +216,7 @@ func main() {
 
 				os.MkdirAll(filepath.Join(src, logicdir), 0755)
 
-				if !isexit(currentlogicfile) {
+				if !isExit(currentlogicfile) {
 					logicfile, err := createFile(currentlogicfile)
 					if err != nil {
 						log.Error(err)
@@ -236,7 +236,7 @@ func main() {
 
 				currentfile := filepath.Join(config.GenInterPath, fmt.Sprintf("%s.go", utils.Snake(f.Name)))
 
-				if !*update && isexit(currentfile) {
+				if !*update && isExit(currentfile) {
 					return
 				}
 				controllerFile, err := createFile(currentfile)
@@ -262,7 +262,7 @@ func main() {
 	log.Info("complete!")
 }
 
-func isexit(filename string) bool {
+func isExit(filename string) bool {
 	if _, err := os.Stat(filepath.Join(src, filename)); err == nil {
 		return true
 	}
