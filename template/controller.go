@@ -66,7 +66,7 @@ func (infor *Infor) imports() template.HTML {
 	sb.WriteString("\n\t" + fmt.Sprintf(`"%s/logics/%s"`, infor.File.ProjectPath, strings.ToLower(infor.Func.Group)))
 	sb.WriteString("\n\t" + fmt.Sprintf(`"%s/%s"`, infor.File.ProjectPath, filepath.Base(infor.File.PackagePath)))
 
-	for k, v := range infor.File.ImportA {
+	for k, v := range infor.File.ImportsA {
 		sb.WriteString("\n\t")
 		if path.Base(v) == k {
 			sb.WriteString(fmt.Sprintf(`"%s"`, v))

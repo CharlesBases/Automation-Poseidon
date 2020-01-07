@@ -113,7 +113,8 @@ func (file *File) ParseFile(astFile *ast.File) {
 }
 
 func (file *File) ParseImport(astFile *ast.File) {
-	ImportA := make(map[string]string)
+	imports := make(map[string]string)
+
 	ast.Inspect(astFile, func(x ast.Node) bool {
 		switch x.(type) {
 		case *ast.ImportSpec:
@@ -131,18 +132,15 @@ func (file *File) ParseImport(astFile *ast.File) {
 					key = val[lastIndex+1:]
 				}
 			}
-			ImportA[key] = val
+			imports[key] = val
 		default:
 			return true
 		}
 		return false
 	})
-	ImportA["context"] = "context"
-	file.ImportA = ImportA
-	file.ImportB = make(map[string]string, 0)
-	for key, val := range file.ImportA {
-		file.ImportB[val] = key
-	}
+
+	file.ImportsA = imports
+	file.ImportsB = map_conversion(imports)
 }
 
 func (file *File) ParseStruct(name string, structType *ast.StructType) []Field {
@@ -245,7 +243,7 @@ func (file *File) ParseField(astField []*ast.Field) []Field {
 			}
 
 			if _, ok := golangBaseType[name]; !ok {
-				if importA, ok := file.ImportA[expr]; ok {
+				if importA, ok := file.ImportsA[expr]; ok {
 					packageImport = importA
 				} else {
 					packageImport = file.PackagePath

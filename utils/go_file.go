@@ -3,17 +3,40 @@ package utils
 import (
 	"go/parser"
 	"path"
-	"strconv"
 	"strings"
+	"sync"
 
 	log "github.com/cihub/seelog"
 	"golang.org/x/tools/go/loader"
 )
 
 func (file *File) ParsePkgStruct(root *Package) {
+	var packages []Package
+
+	swg := sync.WaitGroup{}
+	swg.Add(1)
+
+	go func() {
+		defer swg.Done()
+
+		packages = make([]Package, 0)
+	}()
+
 	file.ParseStructs()
 	file.ParseStructMessage()
-	packages := make([]Package, 0)
+
+	imports := make(map[string]string, 0)
+
+	for key, val := range file.ImportsB {
+		if _, ok := file.StructMessage[key]; ok {
+			imports[val] = key
+		}
+	}
+
+	file.ImportsA = imports
+
+	swg.Wait()
+
 	for key, value := range file.StructMessage {
 		log.Info("parse structs in package: ", key)
 		conf := loader.Config{ParserMode: parser.ParseComments}
@@ -51,24 +74,13 @@ func (file *File) ParsePkgStruct(root *Package) {
 	for _, packageValue := range packages {
 		for _, fileValue := range packageValue.Files {
 			file.Structs[packageValue.PackagePath] = merge(fileValue.Structs[packageValue.PackagePath], file.Structs[packageValue.PackagePath])
-			var i int
-			for key, val := range fileValue.ImportA {
-				_, okB := file.ImportB[val]
-				if !okB { // 未导入包
-					_, okA := file.ImportA[val]
-					if okA { //包名会冲突
-						keyIndex := key + strconv.Itoa(i)
-						file.ImportA[keyIndex] = val
-						file.ImportB[val] = keyIndex
-						i++
-					} else { // 包名不会冲突
-						file.ImportA[key] = val
-						file.ImportB[val] = key
-					}
-				}
+			for key, val := range fileValue.ImportsA {
+				file.ImportsA[key] = val
 			}
 		}
 	}
+
+	file.ImportsB = map_conversion(file.ImportsA)
 }
 
 func (file *File) ParseStructs() {
@@ -88,7 +100,7 @@ func (file *File) ParseStructMessage() {
 		imp := strings.TrimPrefix(val, "*")
 		if index := strings.Index(imp, "."); index != -1 {
 			impPrefix := imp[:index]
-			imp, ok := file.ImportA[impPrefix]
+			imp, ok := file.ImportsA[impPrefix]
 			if ok {
 				if structMessage[imp] == nil {
 					structMessage[imp] = make([]Message, 0)
@@ -183,7 +195,7 @@ func (file *File) GoTypeConfig() {
 }
 
 func (file *File) typeConfig(field *Field) string {
-	if ImportA, ok := file.ImportA[field.Package]; ok {
+	if ImportA, ok := file.ImportsA[field.Package]; ok {
 		i := 0
 		if strings.Contains(field.GoType, "[]") {
 			i = i + 2

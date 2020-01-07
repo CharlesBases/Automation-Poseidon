@@ -27,6 +27,7 @@ var (
 	protoPackage      = flag.String("package", "pb", "package name in .proto file")                            // .proto 文件包名
 	generateProto     = flag.Bool("proto", false, "generate proto file or not")                                // 是否生成 .proto 文件
 	update            = flag.Bool("update", false, "update existing interface or not")                         // 是否更新接口
+	context           = flag.Bool("ctx", true, "import context or not")                                        // 是否导入 context
 )
 
 var src string // $GOPATH/src
@@ -147,6 +148,11 @@ func main() {
 
 	// 解析源文件包下结构体
 	config.ParsePkgStruct(&utils.Package{PackagePath: config.PackagePath})
+
+	if *context {
+		config.ImportsA["context"] = "context"
+		config.ImportsB["context"] = "context"
+	}
 
 	config.GoTypeConfig()
 
