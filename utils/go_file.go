@@ -4,26 +4,19 @@ import (
 	"go/parser"
 	"path"
 	"strings"
-	"sync"
 
 	log "github.com/cihub/seelog"
 	"golang.org/x/tools/go/loader"
 )
 
 func (file *File) ParsePkgStruct(root *Package) {
-	var packages []Package
-
-	swg := sync.WaitGroup{}
-	swg.Add(1)
-
-	go func() {
-		defer swg.Done()
-
-		packages = make([]Package, 0)
-	}()
-
 	file.ParseStructs()
 	file.ParseStructMessage()
+
+	// swg_package := sync.WaitGroup{}
+	// swg_package.Add(len(file.StructMessage))
+
+	packageschannel := make(chan *Package, len(file.StructMessage))
 
 	imports := make(map[string]string, 0)
 
@@ -35,8 +28,6 @@ func (file *File) ParsePkgStruct(root *Package) {
 
 	file.ImportsA = imports
 
-	swg.Wait()
-
 	for key, value := range file.StructMessage {
 		log.Info("parse structs in package: ", key)
 		conf := loader.Config{ParserMode: parser.ParseComments}
@@ -47,7 +38,7 @@ func (file *File) ParsePkgStruct(root *Package) {
 			continue
 		}
 		astFiles := program.Package(key).Files
-		Root := Package{
+		Root := &Package{
 			Name:        path.Base(key),
 			PackagePath: key,
 			Files:       make([]File, 0),
@@ -64,14 +55,14 @@ func (file *File) ParsePkgStruct(root *Package) {
 		if len(Root.Files) == 0 {
 			continue
 		}
-		packages = append(packages, Root)
-	}
-	if len(packages) == 0 {
-		return
+		packageschannel <- Root
 	}
 
+	// swg_package.Wait()
+	close(packageschannel)
+
 	// 合并结果
-	for _, packageValue := range packages {
+	for packageValue := range packageschannel {
 		for _, fileValue := range packageValue.Files {
 			file.Structs[packageValue.PackagePath] = merge(fileValue.Structs[packageValue.PackagePath], file.Structs[packageValue.PackagePath])
 			for key, val := range fileValue.ImportsA {
