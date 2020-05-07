@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	log "github.com/cihub/seelog"
 
@@ -58,7 +57,7 @@ func main() {
 
 	swg := sync.WaitGroup{}
 
-	sourcefilechannel := make(chan int64)
+	sourcefilechannel := make(chan struct{})
 
 	errorchannel := make(chan error)
 	go func() {
@@ -135,7 +134,7 @@ func main() {
 			Structs: make(map[string]map[string][]utils.Field, 0),
 		}
 
-		sourcefilechannel <- time.Now().UnixNano()
+		sourcefilechannel <- struct{}{}
 	}()
 
 	<-sourcefilechannel
