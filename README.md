@@ -21,38 +21,46 @@ protoc-gen-gogoslick    (same as gogofaster, but with generated string, gostring
 proto --help
 Usage of proto:
   -file string
-        full path of the file
+        full path of the interface file (default ".")
+  -interP string
+        full path of the generate interface folder (default "../controllers/")
   -package string
-        package name in .proto file
-  -path string
-        full path of the generate folder (default "./pb/")
+        package name in .proto file (default "pb")
+  -proto
+        generate proto file or not
+  -protoP string
+        full path of the generate rpc folder (default "./pb/")
+  -update
+        update existing interface or not
 
 ```
 * proto -file="./bll.go" -package=auto
 * //go:generate proto -file=$GOFILE -package=auto
 
 ```
-[2019-06-25 17:14:50.104][INF] ==> parsing files for go: bll.go
-[2019-06-25 17:14:50.105][INF] ==> find interface: AutoService
-[2019-06-25 17:14:50.105][INF] ==> parse structs in package: github.com/CharlesBases/proto/test/model
-[2019-06-25 17:14:50.108][INF] ==> find struct: Request
-[2019-06-25 17:14:50.109][INF] ==> find struct: Response
-[2019-06-25 17:14:50.109][INF] ==> parse structs in package: github.com/CharlesBases/proto/test/model
-[2019-06-25 17:14:50.110][INF] ==> find struct: Point
-[2019-06-25 17:14:50.110][INF] ==> parse structs in package: github.com/CharlesBases/proto/test
-[2019-06-25 17:14:50.489][INF] ==> create file: pb/auto.proto
-[2019-06-25 17:14:50.489][INF] ==> generating .proto files ...
-[2019-06-25 17:14:50.492][INF] ==> run the protoc command ...
-[2019-06-25 17:14:50.538][INF] ==> protoc complete !
-[2019-06-25 17:14:50.538][INF] ==> create file: pb/auto.server.go
-[2019-06-25 17:14:50.538][INF] ==> generating server file ...
-[2019-06-25 17:14:50.543][INF] ==> create file: pb/auto.client.go
-[2019-06-25 17:14:50.543][INF] ==> generating client file ...
-[2019-06-25 17:14:50.685][INF] ==> create file: pb/micro/server.go
-[2019-06-25 17:14:50.685][INF] ==> generating micro_server file ...
-[2019-06-25 17:14:50.686][INF] ==> create file: pb/micro/client.go
-[2019-06-25 17:14:50.686][INF] ==> generating micro_client file ...
-[2019-06-25 17:14:50.687][INF] ==> complete!
+[2019-11-17 12:49:47.502][INF] ==> parsing files for go: D:\Program\Go\src\src\github.com\CharlesBases\Automation-Poseidon\bll\bll.go
+[2019-11-17 12:49:47.502][INF] ==> find interface: ProtoService
+[2019-11-17 12:49:47.510][INF] ==> parse structs in package: github.com/CharlesBases/Automation-Poseidon/core
+[2019-11-17 12:49:47.544][INF] ==> find struct: ProtoDemoRequest
+[2019-11-17 12:49:47.577][INF] ==> find struct: Error
+[2019-11-17 12:49:47.577][INF] ==> find struct: ProtoDemoResponse
+[2019-11-17 12:49:47.577][INF] ==> parse structs in package: github.com/CharlesBases/Automation-Poseidon/core
+[2019-11-17 12:49:47.612][INF] ==> find struct: Error
+[2019-11-17 12:49:47.612][INF] ==> find struct: Util
+[2019-11-17 12:49:47.612][INF] ==> parse structs in package: github.com/CharlesBases/Automation-Poseidon/core
+[2019-11-17 12:49:47.646][INF] ==> find struct: A
+[2019-11-17 12:49:47.646][INF] ==> create file: github.com\CharlesBases\Automation-Poseidon\controllers\implement.go
+[2019-11-17 12:49:47.646][INF] ==> create file: github.com\CharlesBases\Automation-Poseidon\controllers\ProtoDemoD.go
+[2019-11-17 12:49:47.646][INF] ==> create file: github.com\CharlesBases\Automation-Poseidon\controllers\ProtoDemoB.go
+[2019-11-17 12:49:47.646][INF] ==> create file: github.com\CharlesBases\Automation-Poseidon\controllers\ProtoDemoC.go
+[2019-11-17 12:49:47.646][INF] ==> create file: github.com\CharlesBases\Automation-Poseidon\controllers\ProtoDemoA.go
+[2019-11-17 12:49:47.647][INF] ==> generating implement files ...
+[2019-11-17 12:49:47.647][INF] ==> generating ProtoDemoD files ...
+[2019-11-17 12:49:47.647][INF] ==> generating ProtoDemoB files ...
+[2019-11-17 12:49:47.647][INF] ==> generating ProtoDemoC files ...
+[2019-11-17 12:49:47.647][INF] ==> generating ProtoDemoA files ...
+[2019-11-17 12:49:47.648][INF] ==> complete!
+
 ```
 
 ## 支持类型

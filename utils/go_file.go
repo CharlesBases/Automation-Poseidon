@@ -1,41 +1,34 @@
-package parse
+package utils
 
 import (
 	"go/parser"
-	"strconv"
+	"path"
 	"strings"
 
 	log "github.com/cihub/seelog"
 	"golang.org/x/tools/go/loader"
 )
 
-type File struct {
-	Name          string
-	Package       string
-	PkgPath       string
-	GenPath       string
-	Structs       []Struct
-	Interfaces    []Interface
-	ImportA       map[string]string
-	ImportB       map[string]string
-	Message       map[string]string
-	StructMessage map[string][]Message
-}
-
-func NewFile(pkgname string, pkgpath string, genPath string) File {
-	return File{
-		Package: pkgname,
-		PkgPath: pkgpath,
-		GenPath: genPath,
-	}
-}
-
 func (file *File) ParsePkgStruct(root *Package) {
 	file.ParseStructs()
 	file.ParseStructMessage()
-	structMessage := file.StructMessage
-	packages := make([]Package, 0)
-	for key, value := range structMessage {
+
+	// swg_package := sync.WaitGroup{}
+	// swg_package.Add(len(file.StructMessage))
+
+	packageschannel := make(chan *Package, len(file.StructMessage))
+
+	imports := make(map[string]string, 0)
+
+	for key, val := range file.ImportsB {
+		if _, ok := file.StructMessage[key]; ok {
+			imports[val] = key
+		}
+	}
+
+	file.ImportsA = imports
+
+	for key, value := range file.StructMessage {
 		log.Info("parse structs in package: ", key)
 		conf := loader.Config{ParserMode: parser.ParseComments}
 		conf.Import(key)
@@ -45,68 +38,49 @@ func (file *File) ParsePkgStruct(root *Package) {
 			continue
 		}
 		astFiles := program.Package(key).Files
-		Root := Package{root: root}
-		Root.PkgPath = key
-		Root.Files = make([]File, 0, len(astFiles))
+		Root := &Package{
+			Name:        path.Base(key),
+			PackagePath: key,
+			Files:       make([]File, 0),
+			root:        root,
+		}
 		for _, astFile := range astFiles {
 			structFile := Root.ParseStruct(value, astFile)
 			if structFile == nil {
 				continue
 			}
-			structFile.PkgPath = Root.PkgPath
 			structFile.ParsePkgStruct(root)
 			Root.Files = append(Root.Files, *structFile)
 		}
 		if len(Root.Files) == 0 {
 			continue
 		}
-		packages = append(packages, Root)
+		packageschannel <- Root
 	}
-	if len(packages) == 0 {
-		return
-	}
-	if len(file.Structs) == 0 {
-		file.Structs = make([]Struct, 0)
-	}
+
+	// swg_package.Wait()
+	close(packageschannel)
 
 	// 合并结果
-	for _, packageValue := range packages {
+	for packageValue := range packageschannel {
 		for _, fileValue := range packageValue.Files {
-			file.Structs = append(file.Structs, fileValue.Structs...)
-			var i int
-			for key, val := range fileValue.ImportA {
-				_, okB := file.ImportB[val]
-				if !okB { // 未导入包
-					_, okA := file.ImportA[val]
-					if okA { //包名会冲突
-						keyIndex := key + strconv.Itoa(i)
-						file.ImportA[keyIndex] = val
-						file.ImportB[val] = keyIndex
-						i++
-					} else { // 包名不会冲突
-						file.ImportA[key] = val
-						file.ImportB[val] = key
-					}
-				}
+			file.Structs[packageValue.PackagePath] = merge(fileValue.Structs[packageValue.PackagePath], file.Structs[packageValue.PackagePath])
+			for key, val := range fileValue.ImportsA {
+				file.ImportsA[key] = val
 			}
 		}
 	}
 
-	for structKey, structValue := range file.Structs {
-		for _, fieldValue := range structValue.Fields {
-			goType := strings.Replace(strings.Replace(fieldValue.GoType, "[]", "", 1), "*", "", -1)
-			if structValue.Name == goType {
-				file.Structs[structKey].IsRecursion = true
-			}
-		}
-	}
+	file.ImportsB = map_conversion(file.ImportsA)
 }
 
 func (file *File) ParseStructs() {
-	for structIndex, fileStruct := range file.Structs {
-		for fieldIndex, field := range fileStruct.Fields {
-			protoType := file.parseType(field.GoType)
-			file.Structs[structIndex].Fields[fieldIndex].ProtoType = protoType
+	for packageName, packageStruct := range file.Structs {
+		for structName, structFields := range packageStruct {
+			for fieldIndex, field := range structFields {
+				protoType := file.parseType(field.GoType)
+				file.Structs[packageName][structName][fieldIndex].ProtoType = protoType
+			}
 		}
 	}
 }
@@ -117,7 +91,7 @@ func (file *File) ParseStructMessage() {
 		imp := strings.TrimPrefix(val, "*")
 		if index := strings.Index(imp, "."); index != -1 {
 			impPrefix := imp[:index]
-			imp, ok := file.ImportA[impPrefix]
+			imp, ok := file.ImportsA[impPrefix]
 			if ok {
 				if structMessage[imp] == nil {
 					structMessage[imp] = make([]Message, 0)
@@ -131,7 +105,7 @@ func (file *File) ParseStructMessage() {
 		} else {
 			_, ok := golangBaseType[val]
 			if !ok {
-				pkgpath := file.PkgPath
+				pkgpath := file.PackagePath
 				if structMessage[pkgpath] == nil {
 					structMessage[pkgpath] = make([]Message, 0)
 				}
@@ -201,16 +175,18 @@ func (file *File) GoTypeConfig() {
 			}
 		}
 	}
-	for structKey, structValue := range file.Structs {
-		for fieldKey, fieldValue := range structValue.Fields {
-			goType := file.typeConfig(&fieldValue)
-			file.Structs[structKey].Fields[fieldKey].GoType = goType
+	for packageName, packageStruct := range file.Structs {
+		for structName, fields := range packageStruct {
+			for fieldIndex, field := range fields {
+				goType := file.typeConfig(&field)
+				file.Structs[packageName][structName][fieldIndex].GoType = goType
+			}
 		}
 	}
 }
 
 func (file *File) typeConfig(field *Field) string {
-	if ImportA, ok := file.ImportA[field.Package]; ok {
+	if ImportA, ok := file.ImportsA[field.Package]; ok {
 		i := 0
 		if strings.Contains(field.GoType, "[]") {
 			i = i + 2
