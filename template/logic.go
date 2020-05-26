@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	log "github.com/cihub/seelog"
+	"charlesbases/Automation-Poseidon/utils"
 )
 
 func (infor *Infor) GenerateLogic(wr io.Writer) {
-	log.Info(fmt.Sprintf("generating logic for %s ...", infor.Func.Group))
+	utils.Info(fmt.Sprintf("generating logic for %s ...", infor.Func.Group))
 	temp := template.New(fmt.Sprintf("%s.go", infor.Func.Group))
 	temp.Funcs(template.FuncMap{
 		"package": func() string {
@@ -19,9 +19,6 @@ func (infor *Infor) GenerateLogic(wr io.Writer) {
 		},
 	})
 	logicTemplate, err := temp.Parse(logicTemplate)
-	if err != nil {
-		log.Error(err)
-		return
-	}
+	utils.ThrowCheck(err)
 	logicTemplate.Execute(wr, infor.Func)
 }

@@ -9,8 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	log "github.com/cihub/seelog"
-
 	"charlesbases/Automation-Poseidon/utils"
 )
 
@@ -29,7 +27,7 @@ var (
 )
 
 func (infor *Infor) GenerateController(wr io.Writer) {
-	log.Info(fmt.Sprintf("generating %s files ...", infor.Func.Name))
+	utils.Info(fmt.Sprintf("generating %s files ...", infor.Func.Name))
 	temp := template.New(fmt.Sprintf("%s.go", infor.Func.Name))
 	temp.Funcs(template.FuncMap{
 		"package": func() string {
@@ -53,10 +51,7 @@ func (infor *Infor) GenerateController(wr io.Writer) {
 		"parseResponseParams": infor.parseResponseParams, // response params
 	})
 	controllerTemplate, err := temp.Parse(controllerTemplate)
-	if err != nil {
-		log.Error(err)
-		return
-	}
+	utils.ThrowCheck(err)
 	controllerTemplate.Execute(wr, infor.Func)
 }
 

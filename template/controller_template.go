@@ -40,7 +40,7 @@ func (*{{service}}) {{.Name}}({{requestParse}}) ({{responseParse}}) {
 	{{responseAssignment}}
 	// validator
 	if err := validator.New().Struct(request); err != nil {
-		log.Error("json validator error: ", err)
+		utils.Error("json validator error: ", err)
 		response.ErrNo, response.ErrMsg = web.WebError(web.ParamsErr)
 		return
 	}

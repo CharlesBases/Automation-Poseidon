@@ -79,3 +79,11 @@ func map_conversion(source map[string]string) map[string]string {
 	}
 	return finish
 }
+
+func map_merge(source, target map[string]string) {
+	for key, val := range target {
+		if _, ok := source[key]; !ok {
+			source[key] = val
+		}
+	}
+}

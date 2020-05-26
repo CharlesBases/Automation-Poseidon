@@ -7,13 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	log "github.com/cihub/seelog"
-
 	"charlesbases/Automation-Poseidon/utils"
 )
 
 func (infor *Infor) GenerateImplement(wr io.Writer) {
-	log.Info("generating implement files ...")
+	utils.Info("generating implement files ...")
 	temp := template.New("implement.go")
 	temp.Funcs(template.FuncMap{
 		"package": func() string {
@@ -37,9 +35,6 @@ func (infor *Infor) GenerateImplement(wr io.Writer) {
 		},
 	})
 	implementTemplate, err := temp.Parse(implementTemplate)
-	if err != nil {
-		log.Error(err)
-		return
-	}
+	utils.ThrowCheck(err)
 	implementTemplate.Execute(wr, infor.File)
 }

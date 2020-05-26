@@ -4,11 +4,11 @@ import (
 	"html/template"
 	"io"
 
-	log "github.com/cihub/seelog"
+	"charlesbases/Automation-Poseidon/utils"
 )
 
 func (infor *Infor) GenerateProto(wr io.Writer) {
-	log.Info("generating .proto files ...")
+	utils.Info("generating .proto files ...")
 	temp := template.New("pb.proto")
 	temp.Funcs(template.FuncMap{
 		"index": func(i int) int {
@@ -19,9 +19,6 @@ func (infor *Infor) GenerateProto(wr io.Writer) {
 		},
 	})
 	protoTemplate, err := temp.Parse(protoTemplate)
-	if err != nil {
-		log.Error(err)
-		return
-	}
+	utils.ThrowCheck(err)
 	protoTemplate.Execute(wr, infor.File)
 }

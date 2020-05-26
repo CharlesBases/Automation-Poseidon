@@ -5,38 +5,18 @@ import (
 	"path"
 	"strings"
 
-	log "github.com/cihub/seelog"
 	"golang.org/x/tools/go/loader"
 )
 
-func (file *File) ParsePkgStruct(root *Package) {
-	file.ParseStructs()
+func (file *File) parsePackageStruct(root *Package) {
 	file.ParseStructMessage()
 
-	// swg_package := sync.WaitGroup{}
-	// swg_package.Add(len(file.StructMessage))
-
-	packageschannel := make(chan *Package, len(file.StructMessage))
-
-	imports := make(map[string]string, 0)
-
-	for key, val := range file.ImportsB {
-		if _, ok := file.StructMessage[key]; ok {
-			imports[val] = key
-		}
-	}
-
-	file.ImportsA = imports
-
 	for key, value := range file.StructMessage {
-		log.Info("parse structs in package: ", key)
+		Info("parse structs in package: ", key)
 		conf := loader.Config{ParserMode: parser.ParseComments}
 		conf.Import(key)
 		program, err := conf.Load()
-		if err != nil {
-			log.Error(err)
-			continue
-		}
+		ThrowCheck(err)
 		astFiles := program.Package(key).Files
 		Root := &Package{
 			Name:        path.Base(key),
@@ -49,40 +29,25 @@ func (file *File) ParsePkgStruct(root *Package) {
 			if structFile == nil {
 				continue
 			}
-			structFile.ParsePkgStruct(root)
+			structFile.parsePackageStruct(root)
 			Root.Files = append(Root.Files, *structFile)
 		}
 		if len(Root.Files) == 0 {
 			continue
 		}
-		packageschannel <- Root
 	}
-
-	// swg_package.Wait()
-	close(packageschannel)
 
 	// 合并结果
-	for packageValue := range packageschannel {
-		for _, fileValue := range packageValue.Files {
-			file.Structs[packageValue.PackagePath] = merge(fileValue.Structs[packageValue.PackagePath], file.Structs[packageValue.PackagePath])
-			for key, val := range fileValue.ImportsA {
-				file.ImportsA[key] = val
-			}
-		}
-	}
-
-	file.ImportsB = map_conversion(file.ImportsA)
-}
-
-func (file *File) ParseStructs() {
-	for packageName, packageStruct := range file.Structs {
-		for structName, structFields := range packageStruct {
-			for fieldIndex, field := range structFields {
-				protoType := file.parseType(field.GoType)
-				file.Structs[packageName][structName][fieldIndex].ProtoType = protoType
-			}
-		}
-	}
+	// for packageValue := range packageschannel {
+	// 	for _, fileValue := range packageValue.Files {
+	// 		file.Structs[packageValue.PackagePath] = merge(fileValue.Structs[packageValue.PackagePath], file.Structs[packageValue.PackagePath])
+	// 		for key, val := range fileValue.ImportsA {
+	// 			file.ImportsA[key] = val
+	// 		}
+	// 	}
+	// }
+	//
+	// file.ImportsB = map_conversion(file.ImportsA)
 }
 
 func (file *File) ParseStructMessage() {
@@ -96,11 +61,14 @@ func (file *File) ParseStructMessage() {
 				if structMessage[imp] == nil {
 					structMessage[imp] = make([]Message, 0)
 				}
-				structMessage[imp] = append(structMessage[imp], Message{
-					Name:     key,
-					ExprName: val,
-					FullName: imp,
-				})
+				structMessage[imp] = append(
+					structMessage[imp],
+					Message{
+						Name:     key,
+						ExprName: val,
+						FullName: imp,
+					},
+				)
 			}
 		} else {
 			_, ok := golangBaseType[val]
@@ -121,7 +89,7 @@ func (file *File) ParseStructMessage() {
 	file.StructMessage = structMessage
 }
 
-func (file *File) parseType(golangType string) string {
+func (file *File) parseProtoType(golangType string) string {
 	if file.Message == nil {
 		file.Message = make(map[string]string, 0)
 	}
@@ -130,12 +98,12 @@ func (file *File) parseType(golangType string) string {
 		if strings.HasPrefix(golangType, "[]byte") {
 			return "bytes"
 		} else {
-			builder.WriteString("repeated ")
 			golangType = strings.TrimPrefix(golangType, "[]")
+			builder.WriteString("repeated ")
 		}
 	}
-	if protoType2RPCType, ok := golangBaseType2ProtoBaseType[golangType]; ok {
-		builder.WriteString(protoType2RPCType)
+	if protoBaseType, ok := golangBaseType2ProtoBaseType[golangType]; ok {
+		builder.WriteString(protoBaseType)
 	} else {
 		if protoType, ok := golangType2ProtoType[golangType]; ok {
 			builder.WriteString(protoType)
@@ -147,14 +115,25 @@ func (file *File) parseType(golangType string) string {
 			} else {
 				protoType = strings.TrimPrefix(golangType, "*")
 				if index := strings.LastIndex(protoType, "."); index != -1 {
-					protoType = protoType[index+1:]
-					builder.WriteString(protoType)
+					builder.WriteString(protoType[index+1:])
+
+					typePrefix := protoType[:index]
+					if imp, ok := file.ImportsA[typePrefix]; ok {
+						if file.StructMessage[imp] == nil {
+							file.StructMessage[imp] = make([]Message, 0)
+						}
+						file.StructMessage[imp] = append(
+							file.StructMessage[imp],
+							Message{
+								Name:     protoType[index+1:],
+								ExprName: golangType,
+								FullName: imp,
+							})
+					}
 				} else {
 					builder.WriteString(protoType)
+
 				}
-			}
-			if golangType != "context.Context" {
-				file.Message[protoType] = golangType
 			}
 		}
 	}
