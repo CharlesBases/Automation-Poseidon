@@ -51,7 +51,7 @@ var (
 type Package struct {
 	Name         string
 	PackagePath  string
-	Files        []File
+	Files        []*File
 	MessageTypes map[string][]string
 	root         *Package
 }
@@ -68,7 +68,6 @@ type File struct {
 	Interfaces    []Interface
 	ImportsA      map[string]string
 	ImportsB      map[string]string
-	Message       map[string]string
 	StructMessage map[string][]Message
 }
 

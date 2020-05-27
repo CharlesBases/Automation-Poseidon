@@ -2,68 +2,15 @@ package utils
 
 import (
 	"go/ast"
+	"go/parser"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
+
+	"golang.org/x/tools/go/loader"
 )
-
-func (root *Package) ParseStruct(message []Message, astFile *ast.File) *File {
-	file := File{
-		PackagePath: root.PackagePath,
-		Structs:     make(map[string]map[string][]Field, 0),
-	}
-
-	file.parseImport(astFile)
-
-	structs := make(map[string][]Field, 0)
-	ast.Inspect(astFile, func(x ast.Node) bool {
-		switch x.(type) {
-		case *ast.TypeSpec:
-			typeSpec := x.(*ast.TypeSpec)
-
-			if structType, ok := typeSpec.Type.(*ast.StructType); ok {
-				var (
-					isContainsA bool
-					isContainsB bool
-				)
-				if message == nil {
-					isContainsA = true
-				} else {
-					for _, v := range message {
-						if v.Name == typeSpec.Name.Name {
-							isContainsA = true
-						}
-					}
-				}
-				if root.root.MessageTypes == nil {
-					root.root.MessageTypes = make(map[string][]string, 0)
-					isContainsB = false
-				} else {
-					messageType, ok := root.root.MessageTypes[root.PackagePath]
-					if ok {
-						for _, v := range messageType {
-							if v == typeSpec.Name.Name {
-								isContainsB = true
-							}
-						}
-					} else {
-						root.root.MessageTypes[root.PackagePath] = make([]string, 0)
-					}
-				}
-				if isContainsA && !isContainsB {
-					fields := file.ParseStruct(typeSpec.Name.Name, structType)
-					Info("find struct: ", typeSpec.Name.Name)
-					structs[typeSpec.Name.Name] = fields
-					root.root.MessageTypes[root.PackagePath] = append(root.root.MessageTypes[root.PackagePath], typeSpec.Name.Name)
-				}
-			}
-		}
-		return true
-	})
-	file.Structs[file.PackagePath] = structs
-	return &file
-}
 
 func (file *File) ParseFile(astFile *ast.File) {
 	swg := sync.WaitGroup{}
@@ -72,25 +19,25 @@ func (file *File) ParseFile(astFile *ast.File) {
 	go func() {
 		defer swg.Done()
 
-		file.parseImport(astFile)
+		file.ParseImport(astFile)
 	}()
 
 	go func() {
 		defer swg.Done()
 
-		file.parseInterface(astFile)
+		file.ParseInterface(astFile)
 	}()
 
 	swg.Wait()
 
-	file.parsePackageStruct(
+	file.ParsePackageStruct(
 		&Package{
 			PackagePath: file.PackagePath,
 		},
 	)
 }
 
-func (file *File) parseImport(astFile *ast.File) {
+func (file *File) ParseImport(astFile *ast.File) {
 	imports := make(map[string]string, 0)
 
 	ast.Inspect(
@@ -110,15 +57,14 @@ func (file *File) parseImport(astFile *ast.File) {
 				}
 				imports[key] = val
 			}
-
 			return true
 		},
 	)
 
-	map_merge(file.ImportsA, imports)
+	file.ImportsA = import_merge(file.ImportsA, imports)
 }
 
-func (file *File) parseInterface(astFile *ast.File) {
+func (file *File) ParseInterface(astFile *ast.File) {
 	inters := make([]Interface, 0)
 
 	ast.Inspect(
@@ -150,6 +96,116 @@ func (file *File) parseInterface(astFile *ast.File) {
 	)
 
 	file.Interfaces = inters
+}
+
+func (file *File) ParsePackageStruct(Root *Package) {
+	for key, value := range file.StructMessage {
+		Info("parse structs in package: ", key)
+		var (
+			swg     = sync.WaitGroup{}
+			rwMutex = sync.RWMutex{}
+
+			astFiles = make([]*ast.File, 0)
+			root     = new(Package)
+		)
+
+		swg.Add(2)
+
+		go func() {
+			defer swg.Done()
+
+			root.root = Root
+			root.Name = path.Base(key)
+			root.PackagePath = key
+			root.Files = make([]*File, 0)
+		}()
+
+		go func() {
+			defer swg.Done()
+
+			conf := loader.Config{ParserMode: parser.ParseComments}
+			conf.Import(key)
+			program, err := conf.Load()
+			ThrowCheck(err)
+			astFiles = program.Package(key).Files
+		}()
+
+		swg.Wait()
+
+		for index := range astFiles {
+			swg.Add(1)
+
+			go func(num int, astfile *ast.File) {
+				defer swg.Done()
+
+				structFile := root.ParseStruct(value, astfile)
+				if structFile == nil {
+					return
+				}
+				structFile.ParsePackageStruct(Root)
+
+				rwMutex.RLock()
+				root.Files = append(root.Files, structFile)
+				rwMutex.RUnlock()
+			}(index, astFiles[index])
+		}
+
+		swg.Wait()
+
+		for _, fileValue := range root.Files {
+			file.Structs = struct_merge(file.Structs, fileValue.Structs)
+			file.ImportsA = import_merge(file.ImportsA, fileValue.ImportsA)
+		}
+	}
+}
+
+func (root *Package) ParseStruct(messages []Message, astFile *ast.File) *File {
+	file := File{
+		PackagePath: root.PackagePath,
+		Structs:     make(map[string]map[string][]Field, 0),
+	}
+
+	file.ParseImport(astFile)
+
+	structs := make(map[string][]Field, 0)
+	ast.Inspect(astFile, func(x ast.Node) bool {
+		switch x.(type) {
+		case *ast.TypeSpec:
+			typeSpec := x.(*ast.TypeSpec)
+
+			if structType, ok := typeSpec.Type.(*ast.StructType); ok {
+				for messagesIndex := range messages {
+					// 文件中结构体是否需要
+					if strings.HasSuffix(messages[messagesIndex].ExprName, typeSpec.Name.Name) {
+						// 文件中结构体是否已加载
+						if root.root.MessageTypes != nil {
+							if messageTypes, ok := root.root.MessageTypes[root.PackagePath]; ok {
+								for messageTypesIndex := range messageTypes {
+									if strings.HasSuffix(messageTypes[messageTypesIndex], typeSpec.Name.Name) {
+										return true
+									}
+								}
+							} else {
+								root.root.MessageTypes[root.PackagePath] = make([]string, 0)
+							}
+						} else {
+							root.root.MessageTypes = make(map[string][]string, 0)
+						}
+						Info("find struct: ", typeSpec.Name.Name)
+						structs[typeSpec.Name.Name] = file.ParseStruct(typeSpec.Name.Name, structType)
+						root.root.MessageTypes[root.PackagePath] = append(root.root.MessageTypes[root.PackagePath], typeSpec.Name.Name)
+
+						break
+					}
+				}
+			}
+		}
+		return true
+	})
+
+	file.Structs[file.PackagePath] = structs
+	file.checkImports()
+	return &file
 }
 
 func (file *File) ParseStruct(name string, structType *ast.StructType) []Field {
@@ -202,18 +258,99 @@ func (file *File) ParseFunc(name string, funcType *ast.FuncType) Func {
 	return fun
 }
 
-// 解析ast方法声明中的表达式
-func parseExpr(expr ast.Expr) (fieldType string) {
+func (file *File) ParseField(astField []*ast.Field) []Field {
+	/*
+		swg := sync.WaitGroup{}
+		fields := make([]Field, len(astField))
+
+		for index := range astField {
+			swg.Add(1)
+
+			go func(number int, field *ast.Field) {
+				defer swg.Done()
+
+				fieldType := parseExpr(field.Type)
+
+				expr, packageImport := func() (expr string, packageImport string) {
+					name := strings.TrimPrefix(strings.TrimPrefix(fieldType, "[]"), "*")
+					if index := strings.Index(name, "."); index != -1 {
+						expr = name[:index]
+					}
+
+					if _, ok := golangBaseType[name]; !ok {
+						if imp, ok := file.ImportsA[expr]; ok {
+							packageImport = imp
+						} else {
+							packageImport = file.PackagePath
+						}
+					}
+					return
+				}()
+
+				for _, value := range field.Names {
+					fields[number] = Field{
+						Name:      value.Name,
+						GoType:    fieldType,
+						JsonType:  parseJsonType(fieldType),
+						ProtoType: file.parseProtoType(fieldType),
+						Comment:   parseComment(field),
+						GoExpr:    expr,
+						Package:   packageImport,
+					}
+				}
+			}(index, astField[index])
+		}
+
+		swg.Wait()
+	*/
+
+	fields := make([]Field, len(astField))
+	for index := range astField {
+		fieldType := ParseExpr(astField[index].Type)
+
+		expr, packageImport := func() (expr string, packageImport string) {
+			name := strings.TrimPrefix(strings.TrimPrefix(fieldType, "[]"), "*")
+			if index := strings.Index(name, "."); index != -1 {
+				expr = name[:index]
+			}
+
+			if _, ok := golangBaseType[name]; !ok {
+				if imp, ok := file.ImportsA[expr]; ok {
+					packageImport = imp
+				} else {
+					packageImport = file.PackagePath
+				}
+			}
+			return
+		}()
+
+		for _, value := range astField[index].Names {
+			fields[index] = Field{
+				Name:      value.Name,
+				GoType:    fieldType,
+				JsonType:  parseJsonType(fieldType),
+				ProtoType: file.ParseProtoType(fieldType),
+				Comment:   parseComment(astField[index]),
+				GoExpr:    expr,
+				Package:   packageImport,
+			}
+		}
+	}
+
+	return fields
+}
+
+func ParseExpr(expr ast.Expr) (fieldType string) {
 	switch expr.(type) {
 	case *ast.StarExpr:
 		starExpr := expr.(*ast.StarExpr)
-		return "*" + parseExpr(starExpr.X)
+		return "*" + ParseExpr(starExpr.X)
 	case *ast.SelectorExpr:
 		selectorExpr := expr.(*ast.SelectorExpr)
-		return parseExpr(selectorExpr.X) + "." + selectorExpr.Sel.Name
+		return ParseExpr(selectorExpr.X) + "." + selectorExpr.Sel.Name
 	case *ast.ArrayType:
 		arrayType := expr.(*ast.ArrayType)
-		return "[]" + parseExpr(arrayType.Elt)
+		return "[]" + ParseExpr(arrayType.Elt)
 	case *ast.MapType:
 		return "map[string]interface{}"
 	case *ast.InterfaceType:
@@ -224,53 +361,6 @@ func parseExpr(expr ast.Expr) (fieldType string) {
 	default:
 		return fieldType
 	}
-}
-
-func (file *File) ParseField(astField []*ast.Field) []Field {
-	swg := sync.WaitGroup{}
-	fields := make([]Field, len(astField))
-
-	for index := range astField {
-		swg.Add(1)
-
-		go func(number int, field *ast.Field) {
-			defer swg.Done()
-
-			fieldType := parseExpr(field.Type)
-
-			expr, packageImport := func() (expr string, packageImport string) {
-				name := strings.TrimPrefix(strings.TrimPrefix(fieldType, "[]"), "*")
-				if index := strings.Index(name, "."); index != -1 {
-					expr = name[:index]
-				}
-
-				if _, ok := golangBaseType[name]; !ok {
-					if imp, ok := file.ImportsA[expr]; ok {
-						packageImport = imp
-					} else {
-						packageImport = file.PackagePath
-					}
-				}
-				return
-			}()
-
-			for _, value := range field.Names {
-				fields[number] = Field{
-					Name:      value.Name,
-					GoType:    fieldType,
-					JsonType:  parseJsonType(fieldType),
-					ProtoType: file.parseProtoType(fieldType),
-					Comment:   parseComment(field),
-					GoExpr:    expr,
-					Package:   packageImport,
-				}
-			}
-		}(index, astField[index])
-	}
-
-	swg.Wait()
-
-	return fields
 }
 
 func parseComment(field *ast.Field) string {

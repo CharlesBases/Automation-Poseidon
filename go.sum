@@ -1,4 +1,3 @@
-github.com/CharlesBases/Automation-Poseidon v0.0.0-20200507083958-0aa2dedf3d90 h1:fe2W2lMsWt4XXgu87pz6WyO493+hcXAIq7s4X80wwYI=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/net v0.0.0-20190620200207-3b0461eec859/go.mod h1:z5CRVTTTmAJ677TzLLGU+0bjPO0LkuOLi4/5GtJWs/s=
 golang.org/x/sync v0.0.0-20190423024810-112230192c58/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=

@@ -45,13 +45,6 @@ func parseJsonType(fieldType string) string {
 	return jsonType.String()
 }
 
-func merge(a, b map[string][]Field) map[string][]Field {
-	for key, val := range b {
-		a[key] = val
-	}
-	return a
-}
-
 // AaaBbb to aaa_bbb
 func Snake(source string) string {
 	builder := strings.Builder{}
@@ -80,10 +73,32 @@ func map_conversion(source map[string]string) map[string]string {
 	return finish
 }
 
-func map_merge(source, target map[string]string) {
+func struct_merge(source, target map[string]map[string][]Field) map[string]map[string][]Field {
+	if source == nil || len(source) == 0 {
+		return target
+	}
+	for packagePath, StructInfo := range target {
+		if _, ok := source[packagePath]; ok {
+			for structName, structFields := range StructInfo {
+				if _, ok := source[structName]; !ok {
+					source[packagePath][structName] = structFields
+				}
+			}
+		} else {
+			source[packagePath] = StructInfo
+		}
+	}
+	return source
+}
+
+func import_merge(source, target map[string]string) map[string]string {
+	if source == nil || len(source) == 0 {
+		return target
+	}
 	for key, val := range target {
 		if _, ok := source[key]; !ok {
 			source[key] = val
 		}
 	}
+	return source
 }

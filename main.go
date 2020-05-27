@@ -17,14 +17,14 @@ import (
 )
 
 var (
-	sourceFile        = flag.String("file", "./demo/bll/bll.go", "full path of the interface file")                // 源文件路径
-	projectPath       = flag.String("project", "charlesbases/Automation-Poseidon", "module path")                  // go.mod 中项目路径
-	generateInterPath = flag.String("interP", "./demo/controllers/", "full path of the generate interface folder") // 路由层文件夹
-	generateLogicPath = flag.String("logicP", "./demo/logics/", "full path of the generate logics folder")         // 业务层文件夹
+	sourceFile        = flag.String("file", ".", "full path of the interface file")                            // 源文件路径
+	projectPath       = flag.String("project", "", "module path")                                              // go.mod 中项目路径
+	generateInterPath = flag.String("interP", "../controllers/", "full path of the generate interface folder") // 路由层文件夹
+	generateLogicPath = flag.String("logicP", "../logics/", "full path of the generate logics folder")         // 业务层文件夹
 
-	generateProto     = flag.Bool("proto", false, "generate proto file or not")                         // 是否生成 .proto 文件
-	protoPackage      = flag.String("package", "pb", "package name in .proto file")                     // .proto 文件包名
-	generateProtoPath = flag.String("protoP", "./demo/bll/pb/", "full path of the generate rpc folder") // .proto 文件夹
+	generateProtoPath = flag.String("protoP", "./pb/", "full path of the generate rpc folder") // .proto 文件夹
+	protoPackage      = flag.String("package", "pb", "package name in .proto file")            // .proto 文件包名
+	generateProto     = flag.Bool("proto", false, "generate proto file or not")                // 是否生成 .proto 文件
 
 	update  = flag.Bool("update", false, "update existing interface or not") // 是否更新接口
 	context = flag.Bool("ctx", true, "import context or not")                // 是否导入 context
@@ -96,9 +96,8 @@ func main() {
 				return strings.TrimPrefix(abspath, src)[1:]
 			}(),
 
-			ImportsA:      make(map[string]string),
-			StructMessage: make(map[string][]utils.Message, 0),
-			Structs:       make(map[string]map[string][]utils.Field, 0),
+			ImportsA: make(map[string]string),
+			Structs:  make(map[string]map[string][]utils.Field, 0),
 		}
 
 		sourceFileChannel <- struct{}{}
