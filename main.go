@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"charlesbases/Automation-Poseidon/template"
 	"charlesbases/Automation-Poseidon/utils"
@@ -39,6 +40,7 @@ var (
 	astFileChannel    = make(chan struct{})
 	sourceFileChannel = make(chan struct{})
 
+	start    = time.Now()
 	poseidon = utils.Poseidon
 )
 
@@ -174,7 +176,7 @@ func main() {
 	swg.Wait()
 
 	gofmt(filepath.Join(src, poseidon.GenInterPath))
-	utils.Info("complete!")
+	utils.Info(fmt.Sprintf("complete! (%v)", time.Since(start)))
 }
 
 func isExit(filename string) bool {
