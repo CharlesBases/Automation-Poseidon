@@ -26,42 +26,42 @@ var (
 	}
 )
 
-func (infor *Infor) GenerateController(wr io.Writer) {
-	utils.Info(fmt.Sprintf("generating %s files ...", infor.Func.Name))
-	temp := template.New(fmt.Sprintf("%s.go", infor.Func.Name))
+func (controller *ControllerInfor) GenerateController(wr io.Writer) {
+	utils.Info(fmt.Sprintf("generating %s files ...", controller.Func.Name))
+	temp := template.New(fmt.Sprintf("%s.go", controller.Func.Name))
 	temp.Funcs(template.FuncMap{
 		"package": func() string {
-			return path.Base(infor.File.GenInterPath)
+			return path.Base(poseidon.GenInterPath)
 		},
 		"service": func() string {
-			return strings.ToLower(strings.TrimSuffix(infor.Interface.Name, "Service"))
+			return strings.ToLower(strings.TrimSuffix(controller.InterfaceName, "Service"))
 		},
 		"interface": func() string {
-			return fmt.Sprintf("%s.%s", path.Base(infor.File.PackagePath), infor.Interface.Name)
+			return fmt.Sprintf("%s.%s", path.Base(poseidon.PackagePath), controller.InterfaceName)
 		},
-		"imports":             infor.imports,             // import
-		"business":            infor.business,            // 业务层调用
-		"jsonDemo":            infor.jsonDemo,            // json 示例
-		"requestParse":        infor.requestParse,        // 入参
-		"requestDecode":       infor.requestDecode,       // decode request
-		"requestCoercive":     infor.requestCoercive,     // request 类型断言
-		"responseParse":       infor.responseParse,       // 出参
-		"responseAssignment":  infor.responseAssignment,  // response 初始化
-		"parseRequestParams":  infor.parseRequestParams,  // request params
-		"parseResponseParams": infor.parseResponseParams, // response params
+		"imports":             controller.imports,             // import
+		"business":            controller.business,            // 业务层调用
+		"jsonDemo":            controller.jsonDemo,            // json 示例
+		"requestParse":        controller.requestParse,        // 入参
+		"requestDecode":       controller.requestDecode,       // decode request
+		"requestCoercive":     controller.requestCoercive,     // request 类型断言
+		"responseParse":       controller.responseParse,       // 出参
+		"responseAssignment":  controller.responseAssignment,  // response 初始化
+		"parseRequestParams":  controller.parseRequestParams,  // request params
+		"parseResponseParams": controller.parseResponseParams, // response params
 	})
 	controllerTemplate, err := temp.Parse(controllerTemplate)
 	utils.ThrowCheck(err)
-	controllerTemplate.Execute(wr, infor.Func)
+	controllerTemplate.Execute(wr, controller.Func)
 }
 
-func (infor *Infor) imports() template.HTML {
+func (controller *ControllerInfor) imports() template.HTML {
 	sb := strings.Builder{}
 
-	sb.WriteString("\n\t" + fmt.Sprintf(`"%s/logics/%s"`, infor.File.ProjectPath, strings.ToLower(infor.Func.Group)))
-	sb.WriteString("\n\t" + fmt.Sprintf(`"%s/%s"`, infor.File.ProjectPath, filepath.Base(infor.File.PackagePath)))
+	sb.WriteString("\n\t" + fmt.Sprintf(`"%s/logics/%s"`, poseidon.ProjectPath, strings.ToLower(controller.Func.Group)))
+	sb.WriteString("\n\t" + fmt.Sprintf(`"%s/%s"`, poseidon.ProjectPath, filepath.Base(poseidon.PackagePath)))
 
-	for k, v := range infor.File.ImportsA {
+	for k, v := range poseidon.Imports {
 		sb.WriteString("\n\t")
 		if path.Base(v) == k {
 			sb.WriteString(fmt.Sprintf(`"%s"`, v))
@@ -72,20 +72,20 @@ func (infor *Infor) imports() template.HTML {
 	return template.HTML(sb.String())
 }
 
-func (infor *Infor) requestParse() template.HTML {
+func (controller *ControllerInfor) requestParse() template.HTML {
 	sb := strings.Builder{}
-	for i, x := range infor.Func.Params {
+	for i, x := range controller.Func.Params {
 		if i != 0 {
 			sb.WriteString(", ")
 		}
-		sb.WriteString(fmt.Sprintf("%s %s", x.Name, x.GoType))
+		sb.WriteString(fmt.Sprintf("%s %s", x.Name, x.VariableType))
 	}
 	return template.HTML(sb.String())
 }
 
-func (infor *Infor) requestDecode() template.HTML {
+func (controller *ControllerInfor) requestDecode() template.HTML {
 	sb := strings.Builder{}
-	for _, x := range infor.Func.Params {
+	for _, x := range controller.Func.Params {
 		if x.Package == "context" || x.Package == "golang.org/x/net/context" {
 			continue
 		}
@@ -93,55 +93,55 @@ func (infor *Infor) requestDecode() template.HTML {
 			request := new(%s)
 			return web.DecodeRequest(r, request)
 `,
-			strings.TrimPrefix(x.GoType, "*"),
+			strings.TrimPrefix(x.VariableType, "*"),
 		))
 		break
 	}
 	return template.HTML(sb.String())
 }
 
-func (infor *Infor) requestCoercive() template.HTML {
+func (controller *ControllerInfor) requestCoercive() template.HTML {
 	sb := strings.Builder{}
-	for i, x := range infor.Func.Params {
+	for i, x := range controller.Func.Params {
 		if i != 0 {
 			sb.WriteString(", ")
 		}
 		if x.Package == "context" || x.Package == "golang.org/x/net/context" {
 			sb.WriteString(x.Name)
 		} else {
-			sb.WriteString(fmt.Sprintf("request.(%s)", x.GoType))
+			sb.WriteString(fmt.Sprintf("request.(%s)", x.VariableType))
 		}
 	}
 	return template.HTML(sb.String())
 }
 
-func (infor *Infor) responseParse() template.HTML {
+func (controller *ControllerInfor) responseParse() template.HTML {
 	sb := strings.Builder{}
-	for _, x := range infor.Func.Results {
-		sb.WriteString(fmt.Sprintf("response %s", x.GoType))
+	for _, x := range controller.Func.Results {
+		sb.WriteString(fmt.Sprintf("response %s", x.VariableType))
 		break
 	}
 	return template.HTML(sb.String())
 }
 
-func (infor *Infor) responseAssignment() template.HTML {
+func (controller *ControllerInfor) responseAssignment() template.HTML {
 	sb := strings.Builder{}
-	for _, x := range infor.Func.Results {
-		sb.WriteString(fmt.Sprintf("response = new(%s)", strings.TrimPrefix(x.GoType, "*")))
+	for _, x := range controller.Func.Results {
+		sb.WriteString(fmt.Sprintf("response = new(%s)", strings.TrimPrefix(x.VariableType, "*")))
 		break
 	}
 	return template.HTML(sb.String())
 }
 
-func (infor *Infor) business() template.HTML {
+func (controller *ControllerInfor) business() template.HTML {
 	sb := strings.Builder{}
 	sb.WriteString(fmt.Sprintf("response = new(%s.%s).%s(%s)",
-		strings.ToLower(infor.Func.Group),
-		infor.Func.Group,
-		infor.Func.Name,
+		strings.ToLower(controller.Func.Group),
+		controller.Func.Group,
+		controller.Func.Name,
 		func() string {
 			params := strings.Builder{}
-			for i, x := range infor.Func.Params {
+			for i, x := range controller.Func.Params {
 				if i != 0 {
 					params.WriteString(", ")
 				}
@@ -153,32 +153,32 @@ func (infor *Infor) business() template.HTML {
 	return template.HTML(sb.String())
 }
 
-func (infor *Infor) parseRequestParams(fields []utils.Field) template.HTML {
+func (controller *ControllerInfor) parseRequestParams(fields *[]utils.Field) template.HTML {
 	requestParamDepth++
 
 	sb := strings.Builder{}
-	for _, field := range fields {
+	for _, field := range *fields {
 		if requestParamDepth == 1 {
 			if field.Package == "context" || field.Package == "golang.org/x/net/context" {
 				continue
 			}
 		}
-		for _, structField := range infor.File.Structs[field.Package][field.ProtoType] {
+		for _, structField := range poseidon.Structs[field.Package][field.ProtoType] {
 			sb.WriteString(fmt.Sprintf("@apiParam {%s} %s %s\n", structField.JsonType, utils.Snake(structField.Name), structField.Comment))
 			if structField.Package != "" {
-				sb.WriteString(fmt.Sprintf("%s", infor.parseRequestParams([]utils.Field{structField})))
+				sb.WriteString(fmt.Sprintf("%s", controller.parseRequestParams(&[]utils.Field{structField})))
 			}
 		}
 	}
 	return template.HTML(sb.String())
 }
 
-func (infor *Infor) parseResponseParams(fields []utils.Field) template.HTML {
+func (controller *ControllerInfor) parseResponseParams(fields *[]utils.Field) template.HTML {
 	responseParamDepth++
 
 	sb := strings.Builder{}
-	for _, field := range fields {
-		for _, structField := range infor.File.Structs[field.Package][field.ProtoType] {
+	for _, field := range *fields {
+		for _, structField := range poseidon.Structs[field.Package][field.ProtoType] {
 			if responseParamDepth == 1 {
 				if structField.Name != "Results" {
 					continue
@@ -186,45 +186,45 @@ func (infor *Infor) parseResponseParams(fields []utils.Field) template.HTML {
 			}
 			sb.WriteString(fmt.Sprintf("@apiSuccess {%s} %s %s\n", structField.JsonType, utils.Snake(structField.Name), structField.Comment))
 			if structField.Package != "" {
-				sb.WriteString(fmt.Sprintf("%s", infor.parseResponseParams([]utils.Field{structField})))
+				sb.WriteString(fmt.Sprintf("%s", controller.parseResponseParams(&[]utils.Field{structField})))
 			}
 		}
 	}
 	return template.HTML(sb.String())
 }
 
-func (infor *Infor) jsonDemo(fields []utils.Field) template.HTML {
-	jsonDatas := infor.decode(fields)
+func (controller *ControllerInfor) jsonDemo(fields *[]utils.Field) template.HTML {
+	jsonDatas := controller.decode(fields)
 	datas, _ := json.MarshalIndent(jsonDatas, "", "\t")
 	return template.HTML(string(datas))
 }
 
-func (infor *Infor) decode(fields []utils.Field) interface{} {
+func (controller *ControllerInfor) decode(fields *[]utils.Field) interface{} {
 	jsonDatas := make(map[string]interface{}, 0)
-	for _, param := range fields {
+	for _, param := range *fields {
 		if param.Package == "context" || param.Package == "golang.org/x/net/context" {
 			continue
 		}
-		for _, field := range infor.File.Structs[param.Package][param.ProtoType] {
-			jsonDatas[utils.Snake(field.Name)] = infor.parseField(field)
+		for _, field := range poseidon.Structs[param.Package][param.ProtoType] {
+			jsonDatas[utils.Snake(field.Name)] = controller.parseField(&field)
 		}
 		break
 	}
 	return jsonDatas
 }
 
-func (infor *Infor) parseField(field utils.Field) interface{} {
+func (controller *ControllerInfor) parseField(field *utils.Field) interface{} {
 	switch strings.HasPrefix(field.ProtoType, "repeated ") {
 	case false:
 		if field.Package != "" {
-			return infor.decode([]utils.Field{field})
+			return controller.decode(&[]utils.Field{*field})
 		}
 		return jsonDefaultValue[field.JsonType]
 	case true:
 		field.ProtoType = strings.TrimPrefix(field.ProtoType, "repeated ")
 		if field.Package != "" {
 			data := make([]interface{}, 1)
-			data[0] = infor.decode([]utils.Field{field})
+			data[0] = controller.decode(&[]utils.Field{*field})
 			return data
 		} else {
 			data := make([]interface{}, 1)

@@ -10,15 +10,15 @@ import (
 	"charlesbases/Automation-Poseidon/utils"
 )
 
-func (infor *Infor) GenerateLogic(wr io.Writer) {
-	utils.Info(fmt.Sprintf("generating logic for %s ...", infor.Func.Group))
-	temp := template.New(fmt.Sprintf("%s.go", infor.Func.Group))
+func (logic *LogicInfor) GenerateLogic(wr io.Writer) {
+	utils.Info(fmt.Sprintf("generating logic for %s ...", logic.Group))
+	temp := template.New(fmt.Sprintf("%s.go", logic.Group))
 	temp.Funcs(template.FuncMap{
 		"package": func() string {
-			return filepath.Base(strings.ToLower(infor.Func.Group))
+			return filepath.Base(strings.ToLower(logic.Group))
 		},
 	})
 	logicTemplate, err := temp.Parse(logicTemplate)
 	utils.ThrowCheck(err)
-	logicTemplate.Execute(wr, infor.Func)
+	logicTemplate.Execute(wr, logic)
 }

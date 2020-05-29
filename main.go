@@ -34,11 +34,12 @@ var (
 	err     error
 	src     string // $GOPATH/src
 	astFile *ast.File
-	config  *utils.File
 
 	swg               = sync.WaitGroup{}
 	astFileChannel    = make(chan struct{})
 	sourceFileChannel = make(chan struct{})
+
+	poseidon = utils.Poseidon
 )
 
 func main() {
@@ -64,42 +65,15 @@ func main() {
 	swg.Add(1)
 	go func() {
 		defer swg.Done()
-
-		config = &utils.File{
-			Name:        filepath.Base(*sourceFile),
-			PackagePath: strings.TrimPrefix(filepath.Dir(*sourceFile), src)[1:],
-			ProjectPath: func() string {
-				if *projectPath != "" {
-					return fmt.Sprintf("%s", *projectPath)
-				}
-				return filepath.Dir(strings.TrimPrefix(filepath.Dir(*sourceFile), src)[1:])
-			}(),
-			ProtoPackage: *protoPackage,
-			GenProtoPath: func() string {
-				abspath, err := filepath.Abs(*generateProtoPath)
-				utils.ThrowCheck(err)
-				if *generateProto {
-					os.MkdirAll(abspath, 0755)
-				}
-				return strings.TrimPrefix(abspath, src)[1:]
-			}(),
-			GenInterPath: func() string {
-				abspath, err := filepath.Abs(*generateInterPath)
-				utils.ThrowCheck(err)
-				os.MkdirAll(abspath, 0755)
-				return strings.TrimPrefix(abspath, src)[1:]
-			}(),
-			GenLogicPath: func() string {
-				abspath, err := filepath.Abs(*generateLogicPath)
-				utils.ThrowCheck(err)
-				os.MkdirAll(abspath, 0755)
-				return strings.TrimPrefix(abspath, src)[1:]
-			}(),
-
-			ImportsA: make(map[string]string),
-			Structs:  make(map[string]map[string][]utils.Field, 0),
-		}
-
+		poseidon.Init(
+			src,
+			*sourceFile,
+			*projectPath,
+			*generateInterPath,
+			*generateLogicPath,
+			*generateProtoPath,
+			*protoPackage,
+		)
 		sourceFileChannel <- struct{}{}
 	}()
 
@@ -107,15 +81,13 @@ func main() {
 	<-astFileChannel
 
 	if *context {
-		config.ImportsA["context"] = "context"
+		poseidon.Imports["context"] = "context"
 	}
 
-	config.ParseFile(astFile)
-	if len(config.Interfaces) == 0 {
+	utils.ParseFile(astFile)
+	if len(poseidon.Interfaces) == 0 {
 		utils.ThrowCheck(fmt.Errorf("no interface found"))
 	}
-
-	config.GoTypeConfig()
 
 	// generate proto file
 	swg.Add(1)
@@ -123,15 +95,12 @@ func main() {
 		defer swg.Done()
 
 		if *generateProto {
-			protofile := filepath.Join(config.GenProtoPath, fmt.Sprintf("%s.proto", *protoPackage))
+			protofile := filepath.Join(poseidon.GenProtoPath, fmt.Sprintf("%s.proto", *protoPackage))
 			protoFile, err := createFile(protofile)
 			utils.ThrowCheck(err)
 			defer protoFile.Close()
 
-			infor := &template.Infor{
-				File: config,
-			}
-			infor.GenerateProto(protoFile)
+			new(template.Base).GenerateProto(protoFile)
 
 			absprotofile := filepath.Join(src, protofile)
 			dir := filepath.Dir(absprotofile)
@@ -154,22 +123,39 @@ func main() {
 	go func() {
 		defer swg.Done()
 
-		implementFile, err := createFile(filepath.Join(config.GenInterPath, "implement.go"))
+		implementFile, err := createFile(filepath.Join(poseidon.GenInterPath, "implement.go"))
 		utils.ThrowCheck(err)
-		infor := &template.Infor{File: config}
-		infor.GenerateImplement(implementFile)
+		new(template.Base).GenerateImplement(implementFile)
 	}()
 
 	// gen func
-	for _, Interface := range config.Interfaces {
-		for _, Func := range Interface.Funcs {
+	for interfacesIndex := range poseidon.Interfaces {
+		for funcsIndex := range poseidon.Interfaces[interfacesIndex].Funcs {
 			swg.Add(2)
 
-			// logic
-			go func(f utils.Func) {
+			// controllers
+			go func(i *utils.Interface, f *utils.Func) {
 				defer swg.Done()
 
-				logicdir := filepath.Join(config.GenLogicPath, strings.ToLower(f.Group))
+				currentfile := filepath.Join(poseidon.GenInterPath, fmt.Sprintf("%s.go", utils.Snake(f.Name)))
+
+				if !*update && isExit(currentfile) {
+					return
+				}
+				controllerFile, err := createFile(currentfile)
+				utils.ThrowCheck(err)
+				controller := new(template.ControllerInfor)
+				controller.InterfaceName = i.Name
+				controller.Func = f
+				controller.GenerateController(controllerFile)
+
+			}(&(poseidon.Interfaces[interfacesIndex]), &(poseidon.Interfaces[interfacesIndex].Funcs[funcsIndex]))
+
+			// logic
+			go func(f *utils.Func) {
+				defer swg.Done()
+
+				logicdir := filepath.Join(poseidon.GenLogicPath, strings.ToLower(f.Group))
 				currentlogicfile := filepath.Join(logicdir, fmt.Sprintf("%s.go", strings.ToLower(f.Group)))
 
 				os.MkdirAll(filepath.Join(src, logicdir), 0755)
@@ -177,39 +163,17 @@ func main() {
 				if !isExit(currentlogicfile) {
 					logicfile, err := createFile(currentlogicfile)
 					utils.ThrowCheck(err)
-					infor := &template.Infor{
-						File: config,
-						Func: &f,
-					}
-					infor.GenerateLogic(logicfile)
+					logic := new(template.LogicInfor)
+					logic.Group = f.Group
+					logic.GenerateLogic(logicfile)
 				}
-			}(Func)
-
-			// controllers
-			go func(i utils.Interface, f utils.Func) {
-				defer swg.Done()
-
-				currentfile := filepath.Join(config.GenInterPath, fmt.Sprintf("%s.go", utils.Snake(f.Name)))
-
-				if !*update && isExit(currentfile) {
-					return
-				}
-				controllerFile, err := createFile(currentfile)
-				utils.ThrowCheck(err)
-				infor := &template.Infor{
-					File:      config,
-					Interface: &i,
-					Func:      &f,
-				}
-				infor.GenerateController(controllerFile)
-
-			}(Interface, Func)
+			}(&(poseidon.Interfaces[interfacesIndex].Funcs[funcsIndex]))
 		}
 	}
 
 	swg.Wait()
 
-	gofmt(filepath.Join(src, config.GenInterPath))
+	gofmt(filepath.Join(src, poseidon.GenInterPath))
 	utils.Info("complete!")
 }
 

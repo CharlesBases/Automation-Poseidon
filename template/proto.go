@@ -7,7 +7,7 @@ import (
 	"charlesbases/Automation-Poseidon/utils"
 )
 
-func (infor *Infor) GenerateProto(wr io.Writer) {
+func (*Base) GenerateProto(wr io.Writer) {
 	utils.Info("generating .proto files ...")
 	temp := template.New("pb.proto")
 	temp.Funcs(template.FuncMap{
@@ -20,5 +20,5 @@ func (infor *Infor) GenerateProto(wr io.Writer) {
 	})
 	protoTemplate, err := temp.Parse(protoTemplate)
 	utils.ThrowCheck(err)
-	protoTemplate.Execute(wr, infor.File)
+	protoTemplate.Execute(wr, poseidon)
 }
